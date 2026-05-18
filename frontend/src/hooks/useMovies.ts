@@ -1,0 +1,27 @@
+import { useQuery } from '@tanstack/react-query'
+import { searchMovies, getTrending, getMovieDetail } from '@/api/movies'
+
+export function useSearch(query: string) {
+  return useQuery({
+    queryKey: ['movies', 'search', query],
+    queryFn: () => searchMovies(query),
+    enabled: query.length >= 2,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useTrending() {
+  return useQuery({
+    queryKey: ['movies', 'trending'],
+    queryFn: getTrending,
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
+export function useMovieDetail(tmdbId: number, type?: string) {
+  return useQuery({
+    queryKey: ['movies', 'detail', tmdbId, type],
+    queryFn: () => getMovieDetail(tmdbId, type),
+    staleTime: 15 * 60 * 1000,
+  })
+}

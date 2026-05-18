@@ -1,0 +1,22 @@
+# Secrets — never commit these
+backend/firebase-credentials.json
+backend/src/main/resources/application-local.yml
+**/.env
+**/.env.local
+**/.env.production
+
+# Backend build output
+backend/target/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.DS_Store
+
+# Logs
+*.log

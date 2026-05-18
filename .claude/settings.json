@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose up *)",
+      "Bash(docker-compose down *)",
+      "Bash(docker-compose ps)",
+      "Bash(docker-compose logs *)",
+      "Bash(mvn spring-boot:run *)",
+      "Bash(mvn test *)",
+      "Bash(mvn compile *)",
+      "Bash(mvn clean *)",
+      "Bash(mvn package *)",
+      "Bash(mvn dependency:tree)",
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(npm run test *)",
+      "Bash(npm ci)",
+      "Bash(npm install)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(find . *)",
+      "Bash(ls *)",
+      "Bash(mkdir -p *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(psql *)",
+      "Bash(redis-cli *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(rm -rf *)",
+      "Bash(docker system prune *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./backend/src/main/resources/application-local.yml)",
+      "Read(./firebase-credentials.json)"
+    ]
+  }
+}
