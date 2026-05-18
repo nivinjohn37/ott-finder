@@ -53,6 +53,7 @@ tmdb:
 
 firebase:
   credentials-path: ${FIREBASE_CREDENTIALS_PATH:./firebase-credentials.json}
+  credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
   enabled: ${FIREBASE_ENABLED:false}
 
 logging:
