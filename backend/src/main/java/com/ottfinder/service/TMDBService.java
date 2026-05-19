@@ -72,6 +72,7 @@ public class TMDBService {
         String url = UriComponentsBuilder.fromHttpUrl(baseUrl + endpoint + tmdbId)
                 .queryParam("api_key", apiKey)
                 .queryParam("language", "en-US")
+                .queryParam("append_to_response", "videos")
                 .toUriString();
 
         MovieDetail detail = fetchAndMapDetail(url, tmdbId, mediaType);
@@ -131,6 +132,8 @@ public class TMDBService {
                     ? (String) r.get("first_air_date")
                     : (String) r.get("release_date");
 
+            String trailerKey = extractTrailerKey((Map<String, Object>) r.get("videos"));
+
             return new MovieDetail(
                     tmdbId,
                     title,
@@ -141,12 +144,29 @@ public class TMDBService {
                     mediaType,
                     toDouble(r.get("vote_average")),
                     toInt(r.get("vote_count")),
-                    Collections.emptyList()
+                    Collections.emptyList(),
+                    trailerKey
             );
         } catch (RestClientException ex) {
             log.error("TMDB detail fetch failed for tmdbId={}: {}", tmdbId, ex.getMessage());
             return null;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractTrailerKey(Map<String, Object> videos) {
+        if (videos == null) return null;
+        List<Map<String, Object>> results = (List<Map<String, Object>>) videos.get("results");
+        if (results == null) return null;
+        return results.stream()
+                .filter(v -> "YouTube".equals(v.get("site")) && "Trailer".equals(v.get("type")))
+                .filter(v -> Boolean.TRUE.equals(v.get("official")))
+                .findFirst()
+                .or(() -> results.stream()
+                        .filter(v -> "YouTube".equals(v.get("site")) && "Trailer".equals(v.get("type")))
+                        .findFirst())
+                .map(v -> (String) v.get("key"))
+                .orElse(null);
     }
 
     @SuppressWarnings("unchecked")

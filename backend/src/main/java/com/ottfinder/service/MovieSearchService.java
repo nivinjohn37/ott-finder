@@ -95,7 +95,7 @@ public class MovieSearchService {
         return new MovieDetail(
                 detail.tmdbId(), detail.title(), detail.posterUrl(), detail.backdropUrl(),
                 detail.overview(), detail.releaseDate(), detail.mediaType(),
-                detail.voteAverage(), detail.voteCount(), platforms
+                detail.voteAverage(), detail.voteCount(), platforms, detail.trailerKey()
         );
     }
 

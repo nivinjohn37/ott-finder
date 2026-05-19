@@ -12,5 +12,6 @@ public record MovieDetail(
         String mediaType,
         Double voteAverage,
         Integer voteCount,
-        List<OttAvailability> platforms
+        List<OttAvailability> platforms,
+        String trailerKey
 ) {}
