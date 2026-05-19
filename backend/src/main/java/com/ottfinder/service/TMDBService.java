@@ -2,6 +2,7 @@ package com.ottfinder.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottfinder.dto.response.CastMember;
 import com.ottfinder.dto.response.MovieDetail;
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.OttAvailability;
@@ -72,7 +73,7 @@ public class TMDBService {
         String url = UriComponentsBuilder.fromHttpUrl(baseUrl + endpoint + tmdbId)
                 .queryParam("api_key", apiKey)
                 .queryParam("language", "en-US")
-                .queryParam("append_to_response", "videos")
+                .queryParam("append_to_response", "videos,credits")
                 .toUriString();
 
         MovieDetail detail = fetchAndMapDetail(url, tmdbId, mediaType);
@@ -133,6 +134,11 @@ public class TMDBService {
                     : (String) r.get("release_date");
 
             String trailerKey = extractTrailerKey((Map<String, Object>) r.get("videos"));
+            List<String> genres = extractGenres((List<Map<String, Object>>) r.get("genres"));
+            List<CastMember> cast = extractCast((Map<String, Object>) r.get("credits"));
+            Integer runtime = "tv".equals(mediaType)
+                    ? extractTvRuntime((List<Integer>) r.get("episode_run_time"))
+                    : toInt(r.get("runtime"));
 
             return new MovieDetail(
                     tmdbId,
@@ -145,12 +151,44 @@ public class TMDBService {
                     toDouble(r.get("vote_average")),
                     toInt(r.get("vote_count")),
                     Collections.emptyList(),
-                    trailerKey
+                    trailerKey,
+                    (String) r.get("tagline"),
+                    runtime,
+                    genres,
+                    cast
             );
         } catch (RestClientException ex) {
             log.error("TMDB detail fetch failed for tmdbId={}: {}", tmdbId, ex.getMessage());
             return null;
         }
+    }
+
+    private List<String> extractGenres(List<Map<String, Object>> genres) {
+        if (genres == null) return Collections.emptyList();
+        return genres.stream()
+                .map(g -> (String) g.get("name"))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<CastMember> extractCast(Map<String, Object> credits) {
+        if (credits == null) return Collections.emptyList();
+        List<Map<String, Object>> castList = (List<Map<String, Object>>) credits.get("cast");
+        if (castList == null) return Collections.emptyList();
+        return castList.stream()
+                .limit(8)
+                .map(c -> new CastMember(
+                        (String) c.get("name"),
+                        (String) c.get("character"),
+                        buildImageUrl((String) c.get("profile_path"))
+                ))
+                .toList();
+    }
+
+    private Integer extractTvRuntime(List<Integer> episodeRunTime) {
+        if (episodeRunTime == null || episodeRunTime.isEmpty()) return null;
+        return episodeRunTime.get(0);
     }
 
     @SuppressWarnings("unchecked")

@@ -25,9 +25,19 @@ export interface MovieSearchResult {
   platforms: OttAvailability[]
 }
 
+export interface CastMember {
+  name: string
+  character: string
+  profileUrl: string | null
+}
+
 export interface MovieDetail extends MovieSearchResult {
   voteCount: number
   trailerKey: string | null
+  tagline: string | null
+  runtime: number | null
+  genres: string[]
+  cast: CastMember[]
 }
 
 export interface MovieSummary {

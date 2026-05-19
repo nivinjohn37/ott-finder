@@ -1,6 +1,6 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X } from 'lucide-react'
+import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User } from 'lucide-react'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
@@ -104,9 +104,32 @@ export function MovieDetailPage() {
               </span>
             </div>
 
-            <h1 className="font-heading font-bold text-3xl sm:text-4xl text-white mb-4 leading-tight">
+            <h1 className="font-heading font-bold text-3xl sm:text-4xl text-white mb-2 leading-tight">
               {movie.title}
             </h1>
+
+            {movie.tagline && (
+              <p className="text-cinema-muted/70 font-body text-sm italic mb-4">
+                "{movie.tagline}"
+              </p>
+            )}
+
+            {/* Genres + runtime */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              {movie.genres?.map((g) => (
+                <span key={g} className="px-2.5 py-0.5 rounded-full bg-cinema-navy border border-cinema-navy-border text-cinema-muted text-xs font-body">
+                  {g}
+                </span>
+              ))}
+              {movie.runtime && movie.runtime > 0 && (
+                <span className="inline-flex items-center gap-1 text-cinema-muted text-xs font-body">
+                  <Clock size={12} />
+                  {movie.mediaType === 'tv'
+                    ? `${movie.runtime}m / ep`
+                    : `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`}
+                </span>
+              )}
+            </div>
 
             {movie.overview && (
               <p className="text-cinema-muted font-body text-sm leading-relaxed max-w-2xl mb-6">
@@ -172,6 +195,32 @@ export function MovieDetailPage() {
                 </a>
               )}
             </div>
+
+            {/* Cast */}
+            {movie.cast && movie.cast.length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-heading font-semibold text-base text-cinema-text mb-3 flex items-center gap-2">
+                  <User size={15} className="text-cinema-muted" /> Cast
+                </h2>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {movie.cast.map((member) => (
+                    <div key={member.name} className="flex-shrink-0 w-20 text-center">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-cinema-navy border border-cinema-navy-border mx-auto mb-1.5">
+                        {member.profileUrl ? (
+                          <img src={member.profileUrl} alt={member.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-cinema-muted/40">
+                            <User size={24} />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-cinema-text text-2xs font-body font-medium leading-tight line-clamp-2">{member.name}</p>
+                      <p className="text-cinema-muted/60 text-2xs font-body leading-tight line-clamp-1 mt-0.5">{member.character}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Expiry warning */}
             {watchlistEntry?.expiringPlatforms && watchlistEntry.expiringPlatforms.length > 0 && (

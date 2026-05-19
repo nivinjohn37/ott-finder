@@ -13,5 +13,9 @@ public record MovieDetail(
         Double voteAverage,
         Integer voteCount,
         List<OttAvailability> platforms,
-        String trailerKey
+        String trailerKey,
+        String tagline,
+        Integer runtime,
+        List<String> genres,
+        List<CastMember> cast
 ) {}

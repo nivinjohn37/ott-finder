@@ -63,7 +63,8 @@ class MovieControllerTest {
     void getDetail_returnsMovieWithPlatforms() throws Exception {
         MovieDetail detail = new MovieDetail(
                 693134, "Dune: Part Two", "/poster.jpg", "/backdrop.jpg",
-                "Epic sci-fi", "2024-02-27", "movie", 8.2, 5000, Collections.emptyList(), null);
+                "Epic sci-fi", "2024-02-27", "movie", 8.2, 5000, Collections.emptyList(),
+                null, null, null, Collections.emptyList(), Collections.emptyList());
 
         when(movieSearchService.getMovieDetail(693134, null)).thenReturn(detail);
 
