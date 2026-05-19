@@ -22,11 +22,11 @@ export function WatchlistCard({ item }: Props) {
     <motion.div
       layout
       initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: isWatched ? 0.55 : 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.25 }}
       className={`relative rounded-xl overflow-hidden bg-cinema-navy border transition-colors ${
-        isWatched ? 'border-cinema-navy-border opacity-60' : isExpiring ? 'border-accent/40' : 'border-cinema-navy-border'
+        isExpiring && !isWatched ? 'border-accent/40' : 'border-cinema-navy-border'
       }`}
     >
       {isExpiring && (
