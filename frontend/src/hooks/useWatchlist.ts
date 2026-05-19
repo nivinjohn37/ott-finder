@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addToWatchlist, getWatchlist, removeFromWatchlist } from '@/api/watchlist'
+import { addToWatchlist, getWatchlist, removeFromWatchlist, toggleWatched } from '@/api/watchlist'
 import { useAuth } from '@/context/AuthContext'
 
 export function useWatchlist() {
@@ -27,6 +27,15 @@ export function useRemoveFromWatchlist() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (watchlistId: number) => removeFromWatchlist(watchlistId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist', user?.uid] }),
+  })
+}
+
+export function useToggleWatched() {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (watchlistId: number) => toggleWatched(watchlistId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist', user?.uid] }),
   })
 }

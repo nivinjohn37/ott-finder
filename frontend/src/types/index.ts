@@ -52,6 +52,7 @@ export interface WatchlistItem {
   id: number
   movie: MovieSummary & { platforms: OttAvailability[] }
   addedAt: string
+  watchedAt: string | null
   expiringPlatforms: OttAvailability[]
 }
 

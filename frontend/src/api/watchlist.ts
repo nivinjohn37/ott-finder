@@ -20,3 +20,9 @@ export async function getExpiringWatchlist(): Promise<WatchlistItem[]> {
   const res = await api.get<ApiResponse<WatchlistItem[]>>('/watchlist/expiring')
   return res.data.data ?? []
 }
+
+export async function toggleWatched(watchlistId: number): Promise<WatchlistItem> {
+  const res = await api.patch<ApiResponse<WatchlistItem>>(`/watchlist/${watchlistId}/watched`)
+  if (!res.data.data) throw new Error('Failed to toggle watched')
+  return res.data.data
+}

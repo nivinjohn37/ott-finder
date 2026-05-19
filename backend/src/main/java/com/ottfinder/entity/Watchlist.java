@@ -36,4 +36,7 @@ public class Watchlist {
     @Builder.Default
     @Column(name = "notified_before_expiry")
     private Boolean notifiedBeforeExpiry = false;
+
+    @Column(name = "watched_at")
+    private OffsetDateTime watchedAt;
 }

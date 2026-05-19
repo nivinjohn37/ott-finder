@@ -47,6 +47,15 @@ public class WatchlistController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{watchlistId}/watched")
+    public ResponseEntity<ApiResponse<WatchlistItem>> toggleWatched(
+            @PathVariable Long watchlistId,
+            Authentication auth) {
+
+        WatchlistItem item = watchlistService.toggleWatched(principal(auth), watchlistId);
+        return ResponseEntity.ok(ApiResponse.success(item));
+    }
+
     @GetMapping("/expiring")
     public ResponseEntity<ApiResponse<List<WatchlistItem>>> getExpiring(Authentication auth) {
         return ResponseEntity.ok(ApiResponse.success(

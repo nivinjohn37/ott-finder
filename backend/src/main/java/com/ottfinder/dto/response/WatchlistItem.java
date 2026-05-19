@@ -6,5 +6,6 @@ public record WatchlistItem(
         Long id,
         MovieSearchResult movie,
         String addedAt,
+        String watchedAt,
         List<OttAvailability> expiringPlatforms
 ) {}

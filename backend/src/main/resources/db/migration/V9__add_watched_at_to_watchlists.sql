@@ -1,0 +1,1 @@
+ALTER TABLE watchlists ADD COLUMN watched_at TIMESTAMPTZ;

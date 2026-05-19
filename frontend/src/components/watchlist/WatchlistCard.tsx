@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Trash2, Clock, ExternalLink, Film } from 'lucide-react'
+import { Trash2, Clock, ExternalLink, Film, CheckCircle2, Circle } from 'lucide-react'
 import type { WatchlistItem } from '@/types'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
 import { RatingBadge } from '@/components/common/RatingBadge'
-import { useRemoveFromWatchlist } from '@/hooks/useWatchlist'
+import { useRemoveFromWatchlist, useToggleWatched } from '@/hooks/useWatchlist'
 
 interface Props {
   item: WatchlistItem
 }
 
 export function WatchlistCard({ item }: Props) {
-  const { mutate: remove, isPending } = useRemoveFromWatchlist()
+  const { mutate: remove, isPending: removing } = useRemoveFromWatchlist()
+  const { mutate: toggleWatched, isPending: toggling } = useToggleWatched()
   const [imgError, setImgError] = useState(false)
   const isExpiring = item.expiringPlatforms.length > 0
+  const isWatched = !!item.watchedAt
 
   return (
     <motion.div
@@ -24,7 +26,7 @@ export function WatchlistCard({ item }: Props) {
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.25 }}
       className={`relative rounded-xl overflow-hidden bg-cinema-navy border transition-colors ${
-        isExpiring ? 'border-accent/40' : 'border-cinema-navy-border'
+        isWatched ? 'border-cinema-navy-border opacity-60' : isExpiring ? 'border-accent/40' : 'border-cinema-navy-border'
       }`}
     >
       {isExpiring && (
@@ -64,14 +66,28 @@ export function WatchlistCard({ item }: Props) {
                 {item.movie.title}
               </h3>
             </Link>
-            <button
-              onClick={() => remove(item.id)}
-              disabled={isPending}
-              className="flex-shrink-0 p-1.5 rounded-lg text-cinema-muted hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
-              aria-label="Remove from watchlist"
-            >
-              <Trash2 size={15} />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => toggleWatched(item.id)}
+                disabled={toggling}
+                className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
+                  isWatched
+                    ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
+                    : 'text-cinema-muted hover:text-green-400 hover:bg-green-400/10'
+                }`}
+                aria-label={isWatched ? 'Mark as unwatched' : 'Mark as watched'}
+              >
+                {isWatched ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+              </button>
+              <button
+                onClick={() => remove(item.id)}
+                disabled={removing}
+                className="p-1.5 rounded-lg text-cinema-muted hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+                aria-label="Remove from watchlist"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 mt-1.5">
@@ -79,11 +95,15 @@ export function WatchlistCard({ item }: Props) {
             <span className="text-cinema-muted/60 text-xs font-body uppercase tracking-wide">
               {item.movie.mediaType}
             </span>
-            {item.addedAt && (
+            {isWatched && item.watchedAt ? (
+              <span className="text-green-400/70 text-xs font-body">
+                · Watched {new Date(item.watchedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </span>
+            ) : item.addedAt ? (
               <span className="text-cinema-muted/40 text-xs font-body">
                 · Added {new Date(item.addedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               </span>
-            )}
+            ) : null}
           </div>
 
           {/* Platform badges */}

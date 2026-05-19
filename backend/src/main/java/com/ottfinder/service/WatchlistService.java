@@ -100,6 +100,18 @@ public class WatchlistService {
         invalidateCache(user.getId());
     }
 
+    public WatchlistItem toggleWatched(FirebasePrincipal principal, Long watchlistId) {
+        User user = getOrCreateUser(principal);
+        Watchlist entry = watchlistRepository.findById(watchlistId)
+                .filter(w -> w.getUser().getId().equals(user.getId()))
+                .orElseThrow(() -> new MovieNotFoundException(-1));
+
+        entry.setWatchedAt(entry.getWatchedAt() == null ? OffsetDateTime.now() : null);
+        watchlistRepository.save(entry);
+        invalidateCache(user.getId());
+        return toWatchlistItem(entry);
+    }
+
     @Transactional(readOnly = true)
     public List<WatchlistItem> getExpiring(FirebasePrincipal principal) {
         User user = userRepository.findByFirebaseUid(principal.uid()).orElse(null);
@@ -187,6 +199,7 @@ public class WatchlistService {
         return new WatchlistItem(
                 w.getId(), movie,
                 w.getAddedAt() != null ? w.getAddedAt().toString() : null,
+                w.getWatchedAt() != null ? w.getWatchedAt().toString() : null,
                 expiring
         );
     }
