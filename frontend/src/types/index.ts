@@ -27,6 +27,7 @@ export interface MovieSearchResult {
 
 export interface MovieDetail extends MovieSearchResult {
   voteCount: number
+  trailerKey: string | null
 }
 
 export interface MovieSummary {

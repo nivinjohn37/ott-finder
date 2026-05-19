@@ -1,11 +1,11 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X } from 'lucide-react'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
 import { useAuth } from '@/context/AuthContext'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const PLACEHOLDER_BACKDROP = 'https://via.placeholder.com/1280x720/0D1421/8899AA?text=No+Image'
 const PLACEHOLDER_POSTER = 'https://via.placeholder.com/300x450/0D1421/8899AA?text=No+Poster'
@@ -20,6 +20,7 @@ export function MovieDetailPage() {
   const isInWatchlist = useIsInWatchlist(Number(tmdbId))
   const { mutateAsync: add } = useAddToWatchlist()
   const [adding, setAdding] = useState(false)
+  const [trailerOpen, setTrailerOpen] = useState(false)
 
   async function handleAdd() {
     if (!user) { signInWithGoogle(); return }
@@ -135,6 +136,15 @@ export function MovieDetailPage() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-3">
+              {movie.trailerKey && (
+                <button
+                  onClick={() => setTrailerOpen(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-body font-semibold text-sm transition-all backdrop-blur-sm"
+                >
+                  <Play size={16} fill="currentColor" /> Watch Trailer
+                </button>
+              )}
+
               <button
                 onClick={handleAdd}
                 disabled={isInWatchlist || adding}
@@ -175,7 +185,54 @@ export function MovieDetailPage() {
           </motion.div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {trailerOpen && movie.trailerKey && (
+          <TrailerModal trailerKey={movie.trailerKey} onClose={() => setTrailerOpen(false)} />
+        )}
+      </AnimatePresence>
     </div>
+  )
+}
+
+function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+      >
+        <iframe
+          src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
+          title="Trailer"
+          allow="autoplay; encrypted-media; fullscreen"
+          allowFullScreen
+          className="w-full h-full"
+        />
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
+        >
+          <X size={18} />
+        </button>
+      </motion.div>
+    </motion.div>
   )
 }
 
