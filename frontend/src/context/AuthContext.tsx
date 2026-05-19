@@ -7,6 +7,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { queryClient } from '@/lib/queryClient'
 
 interface AuthContextValue {
   user: User | null
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function logout() {
     await signOut(auth)
+    queryClient.clear()
   }
 
   return (

@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 export function useWatchlist() {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ['watchlist'],
+    queryKey: ['watchlist', user?.uid],
     queryFn: getWatchlist,
     enabled: !!user,
     staleTime: 60 * 1000,
@@ -13,19 +13,21 @@ export function useWatchlist() {
 }
 
 export function useAddToWatchlist() {
+  const { user } = useAuth()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ movieId, mediaType }: { movieId: number; mediaType: string }) =>
       addToWatchlist(movieId, mediaType),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist', user?.uid] }),
   })
 }
 
 export function useRemoveFromWatchlist() {
+  const { user } = useAuth()
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (watchlistId: number) => removeFromWatchlist(watchlistId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['watchlist', user?.uid] }),
   })
 }
 
