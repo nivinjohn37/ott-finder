@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Navigate } from 'react-router-dom'
-import { User, Film, Tv, Eye, Bookmark, Calendar, Camera, Loader2 } from 'lucide-react'
+import { User, Film, Tv, Eye, Bookmark, Calendar, Camera, Loader2, Pencil, Check, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import { updateProfile } from 'firebase/auth'
@@ -18,6 +18,40 @@ export function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
+
+  function startEditName() {
+    setNameValue(user?.displayName ?? '')
+    setNameError(null)
+    setEditingName(true)
+  }
+
+  function cancelEditName() {
+    setEditingName(false)
+    setNameError(null)
+  }
+
+  async function saveDisplayName() {
+    if (!auth.currentUser) return
+    const trimmed = nameValue.trim()
+    if (!trimmed) { setNameError('Name cannot be empty.'); return }
+    if (trimmed === user?.displayName) { setEditingName(false); return }
+
+    setSavingName(true)
+    setNameError(null)
+    try {
+      await updateProfile(auth.currentUser, { displayName: trimmed })
+      refreshUser()
+      setEditingName(false)
+    } catch {
+      setNameError('Failed to save. Please try again.')
+    } finally {
+      setSavingName(false)
+    }
+  }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -121,9 +155,38 @@ export function ProfilePage() {
         )}
 
         <div>
-          <h1 className="font-heading font-bold text-2xl text-cinema-text">
-            {user.displayName ?? 'Movie Fan'}
-          </h1>
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={nameValue}
+                onChange={(e) => setNameValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') saveDisplayName(); if (e.key === 'Escape') cancelEditName() }}
+                maxLength={50}
+                className="bg-cinema-navy border border-accent/50 rounded-lg px-3 py-1.5 text-cinema-text font-heading font-bold text-xl text-center focus:outline-none focus:ring-2 focus:ring-accent/30 w-48"
+              />
+              <button onClick={saveDisplayName} disabled={savingName} className="p-1.5 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors">
+                {savingName ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+              </button>
+              <button onClick={cancelEditName} className="p-1.5 rounded-lg text-cinema-muted hover:text-red-400 hover:bg-red-400/10 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="font-heading font-bold text-2xl text-cinema-text">
+                {user.displayName ?? 'Movie Fan'}
+              </h1>
+              <button
+                onClick={startEditName}
+                className="p-1 rounded-md text-cinema-muted/40 hover:text-cinema-muted transition-colors"
+                aria-label="Edit display name"
+              >
+                <Pencil size={14} />
+              </button>
+            </div>
+          )}
+          {nameError && <p className="text-red-400 text-xs font-body mt-1">{nameError}</p>}
           <p className="text-cinema-muted font-body text-sm mt-0.5">{user.email}</p>
           {joinedDate && (
             <div className="flex items-center justify-center gap-1.5 mt-2 text-cinema-muted/50 text-xs font-body">
