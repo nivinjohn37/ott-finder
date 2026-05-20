@@ -6,6 +6,7 @@ import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWa
 import { PlatformBadge } from '@/components/common/PlatformBadge'
 import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect } from 'react'
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
 
 const PLACEHOLDER_BACKDROP = 'https://via.placeholder.com/1280x720/0D1421/8899AA?text=No+Image'
 const PLACEHOLDER_POSTER = 'https://via.placeholder.com/300x450/0D1421/8899AA?text=No+Poster'
@@ -22,6 +23,12 @@ export function MovieDetailPage() {
   const [adding, setAdding] = useState(false)
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [shared, setShared] = useState(false)
+  const { addItem } = useRecentlyViewed()
+
+  useEffect(() => {
+    if (movie) addItem(movie)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movie?.tmdbId])
 
   async function handleShare() {
     const url = window.location.href

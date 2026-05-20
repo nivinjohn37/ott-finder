@@ -7,9 +7,12 @@ import { MovieGrid } from '@/components/movie/MovieGrid'
 import { SkeletonGrid } from '@/components/common/SkeletonCard'
 import { EmptyState } from '@/components/common/EmptyState'
 import { SearchBar } from '@/components/movie/SearchBar'
+import { RecentlyViewedShelf } from '@/components/movie/RecentlyViewedShelf'
+import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
 
 export function HomePage() {
   const { data: trending, isLoading, isError } = useTrending()
+  const { items: recentlyViewed, clearAll } = useRecentlyViewed()
 
   return (
     <div>
@@ -30,6 +33,9 @@ export function HomePage() {
         >
           <SearchBar />
         </motion.div>
+
+        {/* Recently viewed */}
+        <RecentlyViewedShelf items={recentlyViewed} onClear={clearAll} />
 
         {/* Trending grid */}
         <section>
