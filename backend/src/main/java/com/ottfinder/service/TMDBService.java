@@ -6,6 +6,7 @@ import com.ottfinder.dto.response.CastMember;
 import com.ottfinder.dto.response.MovieDetail;
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.OttAvailability;
+import com.ottfinder.dto.response.PersonFilmography;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -102,6 +103,67 @@ public class TMDBService {
         List<MovieSearchResult> results = fetchAndMapResults(url);
         if (!results.isEmpty()) cache(cacheKey, results, TRENDING_TTL);
         return results;
+    }
+
+    public PersonFilmography getPersonFilmography(Integer personId) {
+        String cacheKey = "tmdb:person:" + personId;
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            PersonFilmography result = deserialize(cached, PersonFilmography.class);
+            if (result != null) return result;
+        }
+
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/person/" + personId)
+                .queryParam("api_key", apiKey)
+                .queryParam("language", "en-US")
+                .queryParam("append_to_response", "combined_credits")
+                .toUriString();
+
+        PersonFilmography filmography = fetchAndMapPerson(url, personId);
+        if (filmography != null) cache(cacheKey, filmography, DETAIL_TTL);
+        return filmography;
+    }
+
+    @SuppressWarnings("unchecked")
+    private PersonFilmography fetchAndMapPerson(String url, Integer personId) {
+        try {
+            Map<String, Object> r = fetchMap(url);
+            if (r == null) return null;
+
+            String name = (String) r.get("name");
+            String knownFor = (String) r.get("known_for_department");
+
+            List<MovieSearchResult> credits = Collections.emptyList();
+            Map<String, Object> combined = (Map<String, Object>) r.get("combined_credits");
+            if (combined != null) {
+                List<Map<String, Object>> castList = (List<Map<String, Object>>) combined.get("cast");
+                if (castList != null) {
+                    credits = castList.stream()
+                            .filter(c -> c.get("poster_path") != null)
+                            .filter(c -> {
+                                Object vc = c.get("vote_count");
+                                return vc instanceof Number n && n.intValue() > 10;
+                            })
+                            .sorted((a, b) -> Double.compare(
+                                    toDoubleOrZero(b.get("popularity")),
+                                    toDoubleOrZero(a.get("popularity"))))
+                            .limit(20)
+                            .map(this::mapToSearchResult)
+                            .filter(Objects::nonNull)
+                            .toList();
+                }
+            }
+
+            return new PersonFilmography(personId, name, buildImageUrl((String) r.get("profile_path")), knownFor, credits);
+        } catch (Exception ex) {
+            log.error("TMDB person fetch failed for personId={}: {}", personId, ex.getMessage());
+            return null;
+        }
+    }
+
+    private double toDoubleOrZero(Object val) {
+        if (val instanceof Number n) return n.doubleValue();
+        return 0.0;
     }
 
     // TMDB responses are sometimes double-gzipped (CDN adds a second gzip layer on top of
@@ -222,6 +284,7 @@ public class TMDBService {
         return castList.stream()
                 .limit(8)
                 .map(c -> new CastMember(
+                        toInt(c.get("id")),
                         (String) c.get("name"),
                         (String) c.get("character"),
                         buildImageUrl((String) c.get("profile_path"))

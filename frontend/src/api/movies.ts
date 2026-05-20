@@ -1,4 +1,4 @@
-import type { ApiResponse, MovieDetail, MovieSearchResult } from '@/types'
+import type { ApiResponse, MovieDetail, MovieSearchResult, PersonFilmography } from '@/types'
 import api from './axios'
 
 export async function searchMovies(q: string): Promise<MovieSearchResult[]> {
@@ -16,5 +16,11 @@ export async function getMovieDetail(tmdbId: number, type?: string): Promise<Mov
     params: type ? { type } : undefined,
   })
   if (!res.data.data) throw new Error('Movie not found')
+  return res.data.data
+}
+
+export async function getPersonFilmography(personId: number): Promise<PersonFilmography> {
+  const res = await api.get<ApiResponse<PersonFilmography>>(`/movies/person/${personId}`)
+  if (!res.data.data) throw new Error('Person not found')
   return res.data.data
 }

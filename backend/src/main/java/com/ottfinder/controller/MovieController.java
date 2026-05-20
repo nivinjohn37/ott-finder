@@ -3,6 +3,7 @@ package com.ottfinder.controller;
 import com.ottfinder.dto.response.ApiResponse;
 import com.ottfinder.dto.response.MovieDetail;
 import com.ottfinder.dto.response.MovieSearchResult;
+import com.ottfinder.dto.response.PersonFilmography;
 import com.ottfinder.service.MovieSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,16 @@ public class MovieController {
     @GetMapping("/trending")
     public ResponseEntity<ApiResponse<List<MovieSearchResult>>> trending() {
         return ResponseEntity.ok(ApiResponse.success(movieSearchService.getTrending()));
+    }
+
+    @GetMapping("/person/{personId}")
+    public ResponseEntity<ApiResponse<PersonFilmography>> getPersonFilmography(
+            @PathVariable Integer personId) {
+        PersonFilmography filmography = movieSearchService.getPersonFilmography(personId);
+        if (filmography == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("PERSON_NOT_FOUND", "Person not found"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(filmography));
     }
 
     @GetMapping("/{tmdbId}")

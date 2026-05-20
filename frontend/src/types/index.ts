@@ -26,9 +26,18 @@ export interface MovieSearchResult {
 }
 
 export interface CastMember {
+  personId?: number | null
   name: string
   character: string
   profileUrl: string | null
+}
+
+export interface PersonFilmography {
+  personId: number
+  name: string | null
+  profileUrl: string | null
+  knownFor: string | null
+  credits: MovieSearchResult[]
 }
 
 export interface MovieDetail extends MovieSearchResult {

@@ -3,6 +3,7 @@ package com.ottfinder.service;
 import com.ottfinder.dto.response.MovieDetail;
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.OttAvailability;
+import com.ottfinder.dto.response.PersonFilmography;
 import com.ottfinder.entity.Movie;
 import com.ottfinder.exception.MovieNotFoundException;
 import com.ottfinder.repository.MovieRepository;
@@ -98,6 +99,10 @@ public class MovieSearchService {
                 detail.voteAverage(), detail.voteCount(), platforms, detail.trailerKey(),
                 detail.tagline(), detail.runtime(), detail.genres(), detail.cast()
         );
+    }
+
+    public PersonFilmography getPersonFilmography(Integer personId) {
+        return tmdbService.getPersonFilmography(personId);
     }
 
     public List<MovieSearchResult> getTrending() {

@@ -1,6 +1,7 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check } from 'lucide-react'
+import { ActorDrawer } from '@/components/movie/ActorDrawer'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
@@ -23,6 +24,7 @@ export function MovieDetailPage() {
   const [adding, setAdding] = useState(false)
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [shared, setShared] = useState(false)
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null)
   const { addItem } = useRecentlyViewed()
 
   useEffect(() => {
@@ -232,8 +234,12 @@ export function MovieDetailPage() {
                 </h2>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                   {movie.cast.map((member) => (
-                    <div key={member.name} className="flex-shrink-0 w-20 text-center">
-                      <div className="w-16 h-16 rounded-full overflow-hidden bg-cinema-navy border border-cinema-navy-border mx-auto mb-1.5">
+                    <button
+                      key={member.name}
+                      onClick={() => member.personId ? setSelectedPersonId(member.personId) : undefined}
+                      className={`flex-shrink-0 w-20 text-center group ${member.personId ? 'cursor-pointer' : 'cursor-default'}`}
+                    >
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-cinema-navy border border-cinema-navy-border mx-auto mb-1.5 group-hover:ring-2 group-hover:ring-accent/50 transition-all">
                         {member.profileUrl ? (
                           <img src={member.profileUrl} alt={member.name} className="w-full h-full object-cover" />
                         ) : (
@@ -244,7 +250,7 @@ export function MovieDetailPage() {
                       </div>
                       <p className="text-cinema-text text-2xs font-body font-medium leading-tight line-clamp-2">{member.name}</p>
                       <p className="text-cinema-muted/60 text-2xs font-body leading-tight line-clamp-1 mt-0.5">{member.character}</p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -266,6 +272,15 @@ export function MovieDetailPage() {
       <AnimatePresence>
         {trailerOpen && movie.trailerKey && (
           <TrailerModal trailerKey={movie.trailerKey} onClose={() => setTrailerOpen(false)} />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedPersonId !== null && (
+          <ActorDrawer
+            personId={selectedPersonId}
+            onClose={() => setSelectedPersonId(null)}
+          />
         )}
       </AnimatePresence>
     </div>
