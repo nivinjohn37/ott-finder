@@ -1,6 +1,6 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User } from 'lucide-react'
+import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check } from 'lucide-react'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
@@ -21,6 +21,19 @@ export function MovieDetailPage() {
   const { mutateAsync: add } = useAddToWatchlist()
   const [adding, setAdding] = useState(false)
   const [trailerOpen, setTrailerOpen] = useState(false)
+  const [shared, setShared] = useState(false)
+
+  async function handleShare() {
+    const url = window.location.href
+    const title = movie?.title ?? 'Check this out'
+    if (navigator.share) {
+      try { await navigator.share({ title, url }) } catch { /* dismissed */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setShared(true)
+      setTimeout(() => setShared(false), 2000)
+    }
+  }
 
   async function handleAdd() {
     if (!user) { signInWithGoogle(); return }
@@ -194,6 +207,14 @@ export function MovieDetailPage() {
                   <ExternalLink size={16} /> Watch on {movie.platforms[0].displayName}
                 </a>
               )}
+
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg glass text-cinema-muted hover:text-cinema-text font-body font-medium text-sm transition-all"
+                aria-label="Share"
+              >
+                {shared ? <><Check size={16} className="text-green-400" /> Copied!</> : <><Share2 size={16} /> Share</>}
+              </button>
             </div>
 
             {/* Cast */}
