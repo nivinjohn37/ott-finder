@@ -28,9 +28,9 @@ export function MovieDetailPage() {
   const { addItem } = useRecentlyViewed()
 
   useEffect(() => {
-    if (movie) addItem(movie)
+    if (movie && user) addItem(movie)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movie?.tmdbId])
+  }, [movie?.tmdbId, user?.uid])
 
   async function handleShare() {
     const url = window.location.href
@@ -236,7 +236,11 @@ export function MovieDetailPage() {
                   {movie.cast.map((member) => (
                     <button
                       key={member.name}
-                      onClick={() => member.personId ? setSelectedPersonId(member.personId) : undefined}
+                      onClick={() => {
+                        if (!member.personId) return
+                        if (!user) { signInWithGoogle(); return }
+                        setSelectedPersonId(member.personId)
+                      }}
                       className={`flex-shrink-0 w-20 text-center group ${member.personId ? 'cursor-pointer' : 'cursor-default'}`}
                     >
                       <div className="w-16 h-16 rounded-full overflow-hidden bg-cinema-navy border border-cinema-navy-border mx-auto mb-1.5 group-hover:ring-2 group-hover:ring-accent/50 transition-all">

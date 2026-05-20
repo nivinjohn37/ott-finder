@@ -9,10 +9,12 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { SearchBar } from '@/components/movie/SearchBar'
 import { RecentlyViewedShelf } from '@/components/movie/RecentlyViewedShelf'
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
+import { useAuth } from '@/context/AuthContext'
 
 export function HomePage() {
   const { data: trending, isLoading, isError } = useTrending()
   const { items: recentlyViewed, clearAll } = useRecentlyViewed()
+  const { user } = useAuth()
 
   return (
     <div>
@@ -34,8 +36,8 @@ export function HomePage() {
           <SearchBar />
         </motion.div>
 
-        {/* Recently viewed */}
-        <RecentlyViewedShelf items={recentlyViewed} onClear={clearAll} />
+        {/* Recently viewed — logged-in users only */}
+        {user && <RecentlyViewedShelf items={recentlyViewed} onClear={clearAll} />}
 
         {/* Trending grid */}
         <section>
