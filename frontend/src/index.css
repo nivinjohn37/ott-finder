@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Dark theme (default) ── */
+:root {
+  --cinema-black:       6 8 15;
+  --cinema-navy:        13 20 33;
+  --cinema-navy-hover:  22 32 51;
+  --cinema-navy-border: 30 45 69;
+  --cinema-surface:     26 39 68;
+  --cinema-muted:       136 153 170;
+  --cinema-text:        232 237 245;
+
+  --glass-bg:     rgba(13, 20, 33, 0.7);
+  --glass-border: rgba(30, 45, 69, 0.6);
+
+  --skeleton-base:      #0D1421;
+  --skeleton-highlight: #162033;
+
+  --scrollbar-track: #0D1421;
+  --scrollbar-thumb: #1E2D45;
+}
+
+/* ── Light theme ── */
+.light {
+  --cinema-black:       240 244 250;
+  --cinema-navy:        255 255 255;
+  --cinema-navy-hover:  245 248 255;
+  --cinema-navy-border: 221 228 240;
+  --cinema-surface:     237 242 255;
+  --cinema-muted:       100 116 139;
+  --cinema-text:        15 23 42;
+
+  --glass-bg:     rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(221, 228, 240, 0.8);
+
+  --skeleton-base:      #E2E8F0;
+  --skeleton-highlight: #F1F5F9;
+
+  --scrollbar-track: #F0F4FA;
+  --scrollbar-thumb: #CBD5E1;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -14,10 +54,11 @@
   }
 
   body {
-    background-color: #06080F;
-    color: #E8EDF5;
+    background-color: rgb(var(--cinema-black));
+    color: rgb(var(--cinema-text));
     font-family: 'Inter', sans-serif;
     min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -29,11 +70,11 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #0D1421;
+    background: var(--scrollbar-track);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #1E2D45;
+    background: var(--scrollbar-thumb);
     border-radius: 3px;
   }
 
@@ -43,27 +84,27 @@
 
   ::selection {
     background: rgba(240, 78, 40, 0.3);
-    color: #E8EDF5;
+    color: rgb(var(--cinema-text));
   }
 }
 
 @layer components {
   .skeleton {
-    @apply bg-cinema-navy rounded animate-shimmer;
+    @apply rounded animate-shimmer;
     background: linear-gradient(
       90deg,
-      #0D1421 25%,
-      #162033 50%,
-      #0D1421 75%
+      var(--skeleton-base) 25%,
+      var(--skeleton-highlight) 50%,
+      var(--skeleton-base) 75%
     );
     background-size: 200% 100%;
   }
 
   .glass {
-    background: rgba(13, 20, 33, 0.7);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(30, 45, 69, 0.6);
+    border: 1px solid var(--glass-border);
   }
 
   .accent-gradient {

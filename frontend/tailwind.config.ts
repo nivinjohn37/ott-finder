@@ -6,13 +6,13 @@ export default {
     extend: {
       colors: {
         cinema: {
-          black: '#06080F',
-          navy: '#0D1421',
-          'navy-hover': '#162033',
-          'navy-border': '#1E2D45',
-          surface: '#1A2744',
-          muted: '#8899AA',
-          text: '#E8EDF5',
+          black: 'rgb(var(--cinema-black) / <alpha-value>)',
+          navy: 'rgb(var(--cinema-navy) / <alpha-value>)',
+          'navy-hover': 'rgb(var(--cinema-navy-hover) / <alpha-value>)',
+          'navy-border': 'rgb(var(--cinema-navy-border) / <alpha-value>)',
+          surface: 'rgb(var(--cinema-surface) / <alpha-value>)',
+          muted: 'rgb(var(--cinema-muted) / <alpha-value>)',
+          text: 'rgb(var(--cinema-text) / <alpha-value>)',
         },
         accent: {
           DEFAULT: '#F04E28',

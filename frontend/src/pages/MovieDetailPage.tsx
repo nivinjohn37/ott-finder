@@ -69,8 +69,8 @@ export function MovieDetailPage() {
           alt=""
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-cinema-black via-cinema-black/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-cinema-black/70 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent" />
 
         {/* Back button */}
         <Link

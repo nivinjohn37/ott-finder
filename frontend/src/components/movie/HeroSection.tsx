@@ -48,8 +48,8 @@ export function HeroSection({ movies }: Props) {
           ) : (
             <div className="w-full h-full bg-cinema-navy" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-r from-cinema-black via-cinema-black/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-cinema-black via-transparent to-cinema-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
         </motion.div>
       </AnimatePresence>
 
