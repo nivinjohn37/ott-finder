@@ -1,13 +1,59 @@
 import { motion } from 'framer-motion'
 import { Navigate } from 'react-router-dom'
-import { User, Film, Tv, Eye, Bookmark, Calendar } from 'lucide-react'
+import { User, Film, Tv, Eye, Bookmark, Calendar, Camera, Loader2 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useRef, useState } from 'react'
+import { updateProfile } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import api from '@/api/axios'
+import type { ApiResponse } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import { useWatchlist } from '@/hooks/useWatchlist'
 
+const MAX_SIZE_MB = 2
+
 export function ProfilePage() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const { data: watchlist, isLoading } = useWatchlist()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !auth.currentUser) return
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file.')
+      return
+    }
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      setUploadError(`Image must be under ${MAX_SIZE_MB}MB.`)
+      return
+    }
+
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await api.post<ApiResponse<string>>('/user/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+
+      // Build an absolute URL so Firebase Auth stores a usable photoURL
+      const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
+      const downloadURL = apiBase + res.data.data!
+      await updateProfile(auth.currentUser, { photoURL: downloadURL })
+      refreshUser()
+    } catch {
+      setUploadError('Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
 
   if (!user) return <Navigate to="/" replace />
 
@@ -34,16 +80,44 @@ export function ProfilePage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center gap-4 text-center mb-10"
       >
-        {user.photoURL ? (
-          <img
-            src={user.photoURL}
-            alt={user.displayName ?? 'User'}
-            className="w-24 h-24 rounded-full ring-4 ring-accent/30 shadow-accent-glow"
-          />
-        ) : (
-          <div className="w-24 h-24 rounded-full accent-gradient flex items-center justify-center shadow-accent-glow">
-            <User size={40} className="text-white" />
+        {/* Clickable avatar */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="relative group focus:outline-none"
+          aria-label="Change profile photo"
+        >
+          {user.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={user.displayName ?? 'User'}
+              className="w-24 h-24 rounded-full ring-4 ring-accent/30 shadow-accent-glow object-cover"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full accent-gradient flex items-center justify-center shadow-accent-glow">
+              <User size={40} className="text-white" />
+            </div>
+          )}
+
+          {/* Overlay */}
+          <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity">
+            {uploading
+              ? <Loader2 size={22} className="text-white animate-spin" />
+              : <Camera size={22} className="text-white" />
+            }
           </div>
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarChange}
+        />
+
+        {uploadError && (
+          <p className="text-red-400 text-xs font-body mt-1">{uploadError}</p>
         )}
 
         <div>
