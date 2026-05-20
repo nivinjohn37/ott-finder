@@ -82,11 +82,19 @@ export function Navbar() {
                     <Bookmark size={20} />
                   </Link>
                   <div className="flex items-center gap-2">
-                    <img
-                      src={user.photoURL ?? undefined}
-                      alt={user.displayName ?? 'User'}
-                      className="w-8 h-8 rounded-full ring-2 ring-cinema-navy-border"
-                    />
+                    <Link to="/profile" aria-label="Profile">
+                      {user.photoURL ? (
+                        <img
+                          src={user.photoURL}
+                          alt={user.displayName ?? 'User'}
+                          className="w-8 h-8 rounded-full ring-2 ring-cinema-navy-border hover:ring-accent/60 transition-all"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full accent-gradient flex items-center justify-center">
+                          <User size={16} className="text-white" />
+                        </div>
+                      )}
+                    </Link>
                     <button
                       onClick={logout}
                       className="p-1.5 rounded-lg text-cinema-muted hover:text-red-400 transition-colors"
@@ -173,6 +181,7 @@ export function Navbar() {
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
+              {user && <MobileLink to="/profile" label="Profile" />}
               {user ? (
                 <button
                   onClick={logout}

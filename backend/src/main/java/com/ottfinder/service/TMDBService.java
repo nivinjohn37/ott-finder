@@ -15,11 +15,15 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.zip.GZIPInputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +62,7 @@ public class TMDBService {
                 .toUriString();
 
         List<MovieSearchResult> results = fetchAndMapResults(url);
-        cache(cacheKey, results, SEARCH_TTL);
+        if (!results.isEmpty()) cache(cacheKey, results, SEARCH_TTL);
         return results;
     }
 
@@ -96,14 +100,53 @@ public class TMDBService {
                 .toUriString();
 
         List<MovieSearchResult> results = fetchAndMapResults(url);
-        cache(cacheKey, results, TRENDING_TTL);
+        if (!results.isEmpty()) cache(cacheKey, results, TRENDING_TTL);
         return results;
+    }
+
+    // TMDB responses are sometimes double-gzipped (CDN adds a second gzip layer on top of
+    // the Content-Encoding layer that HttpURLConnection already decompressed). Fetching as
+    // byte[] and decompressing manually handles both 0, 1, and 2-layer cases.
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fetchMap(String url) {
+        try {
+            byte[] bytes = restTemplate.getForObject(url, byte[].class);
+            if (bytes == null) return null;
+            String json = decompressIfNeeded(bytes);
+            return objectMapper.readValue(json, Map.class);
+        } catch (RestClientException | IOException ex) {
+            log.error("TMDB fetch failed for {}: {}", url, ex.getMessage());
+            return null;
+        }
+    }
+
+    private String decompressIfNeeded(byte[] bytes) throws IOException {
+        if (bytes.length >= 2 && bytes[0] == (byte) 0x1f && bytes[1] == (byte) 0x8b) {
+            // Java's GZIPInputStream supports concatenated gzip streams. If trailing garbage
+            // (e.g. a \n) follows the valid stream it throws ZipException AFTER the real data
+            // is already decompressed. Read chunk-by-chunk so we keep whatever was read.
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            try (GZIPInputStream gis = new GZIPInputStream(new ByteArrayInputStream(bytes))) {
+                byte[] buf = new byte[8192];
+                int n;
+                try {
+                    while ((n = gis.read(buf)) != -1) {
+                        baos.write(buf, 0, n);
+                    }
+                } catch (java.util.zip.ZipException ignored) {
+                    // Trailing non-gzip bytes after valid stream — data already in baos
+                    if (baos.size() == 0) throw ignored;
+                }
+            }
+            return decompressIfNeeded(baos.toByteArray());
+        }
+        return new String(bytes, StandardCharsets.UTF_8).trim();
     }
 
     @SuppressWarnings("unchecked")
     private List<MovieSearchResult> fetchAndMapResults(String url) {
         try {
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> response = fetchMap(url);
             if (response == null || !response.containsKey("results")) {
                 return Collections.emptyList();
             }
@@ -114,7 +157,7 @@ public class TMDBService {
                     .map(this::mapToSearchResult)
                     .filter(Objects::nonNull)
                     .toList();
-        } catch (RestClientException ex) {
+        } catch (Exception ex) {
             log.error("TMDB search failed: {}", ex.getMessage());
             return Collections.emptyList();
         }
@@ -123,7 +166,7 @@ public class TMDBService {
     @SuppressWarnings("unchecked")
     private MovieDetail fetchAndMapDetail(String url, Integer tmdbId, String mediaType) {
         try {
-            Map<String, Object> r = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> r = fetchMap(url);
             if (r == null) return null;
 
             String title = "tv".equals(mediaType)
@@ -157,7 +200,7 @@ public class TMDBService {
                     genres,
                     cast
             );
-        } catch (RestClientException ex) {
+        } catch (Exception ex) {
             log.error("TMDB detail fetch failed for tmdbId={}: {}", tmdbId, ex.getMessage());
             return null;
         }

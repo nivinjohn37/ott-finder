@@ -9,6 +9,7 @@ import { SearchPage } from '@/pages/SearchPage'
 import { TrendingPage } from '@/pages/TrendingPage'
 import { MovieDetailPage } from '@/pages/MovieDetailPage'
 import { WatchlistPage } from '@/pages/WatchlistPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export function App() {
@@ -23,6 +24,7 @@ export function App() {
               <Route path="/trending" element={<TrendingPage />} />
               <Route path="/movie/:tmdbId" element={<MovieDetailPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Layout>
