@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottfinder.dto.response.OttAvailability;
 import com.ottfinder.entity.OttPlatform;
+import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.OttPlatformRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +30,7 @@ public class OTTAvailabilityService {
     private final RestTemplate restTemplate;
     private final StringRedisTemplate redisTemplate;
     private final OttPlatformRepository platformRepository;
+    private final MovieAvailabilityRepository availabilityRepository;
     private final ObjectMapper objectMapper;
 
     private static final String JUSTWATCH_GRAPHQL_URL = "https://apis.justwatch.com/graphql";
@@ -40,9 +43,34 @@ public class OTTAvailabilityService {
             return deserializeList(cached);
         }
 
-        List<OttAvailability> result = fetchFromJustWatch(tmdbId, title);
+        // Admin-seeded DB entries take precedence; JustWatch fills the rest
+        List<OttAvailability> seeded = fetchFromDb(tmdbId);
+        List<OttAvailability> jw = fetchFromJustWatch(tmdbId, title);
+
+        Map<String, OttAvailability> merged = new LinkedHashMap<>();
+        seeded.forEach(a -> merged.put(a.platformName(), a));
+        jw.forEach(a -> merged.putIfAbsent(a.platformName(), a));
+
+        List<OttAvailability> result = List.copyOf(merged.values());
         cache(cacheKey, result);
         return result;
+    }
+
+    private List<OttAvailability> fetchFromDb(Integer tmdbId) {
+        try {
+            return availabilityRepository.findByMovieTmdbId(tmdbId).stream()
+                    .map(ma -> new OttAvailability(
+                            ma.getPlatform().getName(),
+                            ma.getPlatform().getDisplayName(),
+                            ma.getPlatform().getLogoUrl(),
+                            ma.getDeepLink(),
+                            ma.getAvailableUntil() != null ? ma.getAvailableUntil().toString() : null
+                    ))
+                    .toList();
+        } catch (Exception ex) {
+            log.warn("DB availability fetch failed for tmdbId={}: {}", tmdbId, ex.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     @SuppressWarnings("unchecked")
