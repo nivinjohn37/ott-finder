@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getAdminPlatforms, getAdminStats, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability } from '@/api/user'
+import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
 export function useCurrentUser() {
+  const { user } = useAuth()
   return useQuery({
     queryKey: ['user', 'me'],
     queryFn: getUserMe,
     staleTime: 10 * 60 * 1000,
-    retry: false,
+    enabled: !!user,
   })
 }
 

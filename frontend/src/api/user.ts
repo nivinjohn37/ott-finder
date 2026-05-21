@@ -29,8 +29,8 @@ export async function getAdminStats(): Promise<AdminStats> {
 }
 
 export async function getAdminPlatforms(): Promise<{ name: string; displayName: string }[]> {
-  const res = await api.get<ApiResponse<{ name: string; displayName: string }[]>>('/admin/platforms')
-  return res.data.data ?? []
+  const res = await api.get<ApiResponse<{ platformName: string; displayName: string }[]>>('/admin/platforms')
+  return (res.data.data ?? []).map(p => ({ name: p.platformName, displayName: p.displayName }))
 }
 
 export async function seedAvailability(body: {
