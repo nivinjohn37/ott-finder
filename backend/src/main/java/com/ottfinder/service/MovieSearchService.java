@@ -89,6 +89,11 @@ public class MovieSearchService {
 
         if (detail == null) throw new MovieNotFoundException(tmdbId);
 
+        // Persist genres to DB so stats endpoint can aggregate them
+        if (detail.genres() != null && !detail.genres().isEmpty()) {
+            persistGenres(tmdbId, detail);
+        }
+
         String title = detail.title();
         String type = resolvedType;
         List<OttAvailability> platforms = ottService.findAvailability(tmdbId, type, title);
@@ -109,6 +114,20 @@ public class MovieSearchService {
         List<MovieSearchResult> trending = tmdbService.getTrending();
         CompletableFuture.runAsync(() -> persistNewMovies(trending), apiCallExecutor);
         return trending;
+    }
+
+    private void persistGenres(Integer tmdbId, MovieDetail detail) {
+        try {
+            movieRepository.findByTmdbId(tmdbId).ifPresent(movie -> {
+                if (movie.getGenres() == null || movie.getGenres().isBlank()) {
+                    String genresStr = String.join(",", detail.genres());
+                    movie.setGenres(genresStr);
+                    movieRepository.save(movie);
+                }
+            });
+        } catch (Exception ex) {
+            log.debug("Genre persist skipped for tmdbId={}: {}", tmdbId, ex.getMessage());
+        }
     }
 
     private void persistNewMovies(List<MovieSearchResult> results) {

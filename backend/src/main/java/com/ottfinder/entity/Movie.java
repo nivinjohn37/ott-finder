@@ -51,6 +51,9 @@ public class Movie {
     @Column(name = "media_type", length = 10)
     private String mediaType;
 
+    @Column(columnDefinition = "TEXT")
+    private String genres;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

@@ -65,6 +65,17 @@ export interface WatchlistItem {
   expiringPlatforms: OttAvailability[]
 }
 
+export interface UserStats {
+  favouriteGenre: string | null
+  totalWatchlist: number
+  totalWatched: number
+}
+
+export interface UserPreferences {
+  genres: string[]
+  platforms: string[]
+}
+
 export type MediaType = 'movie' | 'tv'
 
 export const PLATFORM_COLORS: Record<string, string> = {

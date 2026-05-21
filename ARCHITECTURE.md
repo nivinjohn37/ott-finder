@@ -1,11 +1,15 @@
 # OTT Finder — Architecture & Implementation Plan
 
+_Last updated: 2026-05-21_
+
 ## Project Summary
 
 **What it does:** Answers "Where can I watch this movie/show in India?"  
 **Who builds it:** Nivin (Senior Backend Engineer, Java/Spring Boot)  
-**Timeline:** 3-day MVP  
-**Purpose:** Portfolio project for senior product engineering roles in Australia
+**Purpose:** Portfolio project for senior product engineering roles in Australia  
+**Live URLs:**
+- Frontend: https://ott-finder-delta.vercel.app
+- Backend: https://ott-finder-production.up.railway.app
 
 ---
 
@@ -61,7 +65,9 @@ proj-movie/
 │   │   │   │   │       ├── MovieSearchResult.java
 │   │   │   │   │       ├── MovieDetail.java
 │   │   │   │   │       ├── OttAvailability.java
-│   │   │   │   │       └── WatchlistItem.java
+│   │   │   │   │       ├── WatchlistItem.java
+│   │   │   │   │       ├── CastMember.java
+│   │   │   │   │       └── PersonFilmography.java
 │   │   │   │   ├── exception/
 │   │   │   │   │   ├── GlobalExceptionHandler.java
 │   │   │   │   │   ├── MovieNotFoundException.java
@@ -81,7 +87,10 @@ proj-movie/
 │   │   │           ├── V4__create_movie_availability.sql
 │   │   │           ├── V5__create_watchlists.sql
 │   │   │           ├── V6__create_notification_logs.sql
-│   │   │           └── V7__seed_ott_platforms.sql
+│   │   │           ├── V7__seed_ott_platforms.sql
+│   │   │           ├── V8__update_justwatch_provider_ids.sql
+│   │   │           ├── V9__add_watched_at_to_watchlists.sql
+│   │   │           └── V10__add_avatar_to_users.sql
 │   │   └── test/
 │   │       └── java/com/ottfinder/
 │   │           ├── service/
@@ -94,48 +103,54 @@ proj-movie/
 └── frontend/                ← React application
     ├── package.json
     ├── vite.config.ts
-    ├── tailwind.config.ts
+    ├── tailwind.config.ts   ← Cinema colors use CSS var RGB triples for opacity support
     ├── tsconfig.json
-    ├── index.html
+    ├── index.html           ← Anti-flash theme script in <head>
+    ├── vercel.json          ← SPA rewrite rule (/*  → /index.html)
     ├── .env.example
     └── src/
         ├── main.tsx
         ├── App.tsx
+        ├── index.css        ← CSS custom properties for dark + light themes
         ├── components/
         │   ├── layout/
-        │   │   ├── Header.tsx
-        │   │   ├── Footer.tsx
+        │   │   ├── Navbar.tsx          ← Search, theme toggle, auth, profile link
         │   │   └── Layout.tsx
         │   ├── movie/
         │   │   ├── MovieCard.tsx
         │   │   ├── MovieGrid.tsx
-        │   │   ├── PlatformBadge.tsx
-        │   │   └── MovieCardSkeleton.tsx
+        │   │   ├── HeroSection.tsx     ← Auto-rotating hero from trending
+        │   │   ├── SearchBar.tsx       ← With autocomplete suggestions dropdown
+        │   │   ├── ActorDrawer.tsx     ← Slide-in filmography panel
+        │   │   └── RecentlyViewedShelf.tsx  ← Horizontal scroll, login-gated
         │   ├── watchlist/
-        │   │   ├── WatchlistButton.tsx
-        │   │   └── WatchlistItem.tsx
+        │   │   └── WatchlistCard.tsx
         │   └── common/
-        │       ├── SearchBar.tsx
-        │       ├── ErrorMessage.tsx
-        │       └── LoadingSpinner.tsx
+        │       ├── PlatformBadge.tsx
+        │       ├── RatingBadge.tsx
+        │       ├── SkeletonCard.tsx
+        │       └── EmptyState.tsx
         ├── pages/
         │   ├── HomePage.tsx
-        │   ├── SearchPage.tsx
-        │   ├── MovieDetailPage.tsx
+        │   ├── SearchPage.tsx       ← Sort + platform/media-type filter
+        │   ├── MovieDetailPage.tsx  ← Cast drawer, share, trailer, watchlist
         │   ├── WatchlistPage.tsx
+        │   ├── TrendingPage.tsx
+        │   ├── ProfilePage.tsx
         │   └── NotFoundPage.tsx
         ├── hooks/
-        │   ├── useMovieSearch.ts
+        │   ├── useMovies.ts         ← useTrending, useMovieDetail, usePersonFilmography
         │   ├── useWatchlist.ts
-        │   └── useAuth.ts
+        │   └── useRecentlyViewed.ts ← localStorage, max 10 items, deduped
         ├── context/
-        │   └── AuthContext.tsx
+        │   ├── AuthContext.tsx
+        │   └── ThemeContext.tsx     ← dark/light, persisted in localStorage
         ├── api/
-        │   ├── axios.ts           ← Axios instance with base URL + auth header
-        │   ├── movies.ts          ← Movie API calls
-        │   └── watchlist.ts       ← Watchlist API calls
+        │   ├── axios.ts             ← Axios instance with base URL + auth header
+        │   ├── movies.ts            ← Movie API calls
+        │   └── watchlist.ts         ← Watchlist API calls
         └── types/
-            └── index.ts           ← All TypeScript interfaces
+            └── index.ts             ← All TypeScript interfaces
 ```
 
 ---
@@ -193,12 +208,14 @@ users ──< watchlists >── movies ──< movie_availability >── ott_p
 ```sql
 -- users: managed by Firebase, we store minimal profile
 users (
-  id              BIGSERIAL PRIMARY KEY,
-  firebase_uid    VARCHAR(128) UNIQUE NOT NULL,  -- indexed
-  email           VARCHAR(255) UNIQUE NOT NULL,
-  display_name    VARCHAR(100),
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
+  id                   BIGSERIAL PRIMARY KEY,
+  firebase_uid         VARCHAR(128) UNIQUE NOT NULL,  -- indexed
+  email                VARCHAR(255) UNIQUE NOT NULL,
+  display_name         VARCHAR(100),
+  avatar_data          BYTEA,                         -- stored avatar blob (V10)
+  avatar_content_type  VARCHAR(100),                  -- e.g. 'image/jpeg' (V10)
+  created_at           TIMESTAMPTZ DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ DEFAULT NOW()
 )
 
 -- movies: cached from TMDB
@@ -248,6 +265,7 @@ watchlists (
   user_id                 BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   movie_id                BIGINT NOT NULL REFERENCES movies(id),
   added_at                TIMESTAMPTZ DEFAULT NOW(),
+  watched_at              TIMESTAMPTZ,                   -- NULL = not yet watched (V9)
   notified_before_expiry  BOOLEAN DEFAULT FALSE,
   UNIQUE (user_id, movie_id)
 )
@@ -263,6 +281,24 @@ notification_logs (
   status              VARCHAR(20) CHECK (status IN ('sent', 'failed', 'pending'))
 )
 ```
+
+### Migration History
+
+| Version | Description |
+|---|---|
+| V1 | Create users table |
+| V2 | Create movies table |
+| V3 | Create ott_platforms table |
+| V4 | Create movie_availability table |
+| V5 | Create watchlists table |
+| V6 | Create notification_logs table |
+| V7 | Seed OTT platforms (7 Indian platforms) |
+| V8 | Update JustWatch provider IDs to current values |
+| V9 | Add `watched_at` to watchlists (mark as watched feature) |
+| V10 | Add `avatar_data` + `avatar_content_type` to users (profile avatar upload) |
+| V11 | Add `genres TEXT` to movies; create `user_preferences` table |
+
+Next available: **V12** (reserved for admin role column per roadmap Phase 1.5)
 
 ### OTT Platform Seeds (V7 migration)
 
@@ -326,8 +362,9 @@ CompletableFuture.allOf(tmdbFuture, ottFuture)
 
 #### TMDBService
 - Wraps TMDB REST API
-- Methods: `search(query)`, `getDetails(tmdbId)`, `getTrending()`
-- Redis cache key: `tmdb:search:{query}` (TTL: 24h), `tmdb:movie:{tmdbId}` (TTL: 24h)
+- Methods: `search(query)`, `getDetails(tmdbId)`, `getTrending()`, `getPersonFilmography(personId)`
+- `getPersonFilmography`: calls `/person/{personId}?append_to_response=combined_credits`, filters poster_path not null + vote_count > 10, sorts by popularity, limits to 20
+- Redis cache key: `tmdb:search:{query}` (TTL: 24h), `tmdb:movie:{tmdbId}` (TTL: 24h), `tmdb:trending` (TTL: 24h), `tmdb:person:{personId}` (TTL: 24h)
 - Rate limit: 40 req/10s — handled via exponential backoff on 429
 - Image base URL: `https://image.tmdb.org/t/p/w500/{poster_path}`
 
@@ -371,7 +408,15 @@ GET  /api/movies/search?q={query}&page={n}
      → 200 ApiResponse<List<MovieSearchResult>>
      ← No auth required
 
-GET  /api/movies/{tmdbId}
+GET  /api/movies/trending
+     → 200 ApiResponse<List<MovieSearchResult>>
+     ← No auth required
+
+GET  /api/movies/person/{personId}
+     → 200 ApiResponse<PersonFilmography>
+     ← No auth required; login-gated on frontend
+
+GET  /api/movies/{tmdbId}?type={movie|tv}
      → 200 ApiResponse<MovieDetail>
      ← No auth required
 
@@ -379,7 +424,7 @@ GET  /api/watchlist                    ← Auth required
      → 200 ApiResponse<List<WatchlistItem>>
 
 POST /api/watchlist                    ← Auth required
-     Body: { "movieId": 693134 }
+     Body: { "movieId": 693134, "mediaType": "movie" }
      → 201 ApiResponse<WatchlistItem>
      → 409 if already in list
      → 402 if free tier limit reached
@@ -387,8 +432,30 @@ POST /api/watchlist                    ← Auth required
 DELETE /api/watchlist/{watchlistId}    ← Auth required
      → 204 No Content
 
+PATCH /api/watchlist/{watchlistId}/watched   ← Auth required
+     → 200 ApiResponse<WatchlistItem>
+     Sets watched_at = NOW() (or clears it if already watched)
+
 GET  /api/watchlist/expiring           ← Auth required
      → 200 ApiResponse<List<WatchlistItem>>
+
+GET  /api/user/stats                   ← Auth required
+     → 200 ApiResponse<UserStats>
+     Computes favouriteGenre from watchlist movies' genres column
+
+GET  /api/user/preferences             ← Auth required
+     → 200 ApiResponse<UserPreferencesDto>
+
+PUT  /api/user/preferences             ← Auth required
+     Body: { "genres": ["Action", "Drama"], "platforms": ["netflix"] }
+     → 200 ApiResponse<UserPreferencesDto>
+     Replaces all preferences atomically
+
+POST /api/user/avatar                  ← Auth required (multipart)
+     → 200 ApiResponse<String> (URL path to avatar)
+
+GET  /api/user/avatar/{uid}            ← Public
+     → 200 image bytes
 ```
 
 ### Standard Response Envelope
@@ -431,19 +498,22 @@ GET  /api/watchlist/expiring           ← Auth required
 |---|---|---|
 | `tmdb:search:{query}` | 24h | TTL only |
 | `tmdb:movie:{tmdbId}` | 24h | TTL only |
+| `tmdb:trending` | 24h | TTL only |
+| `tmdb:person:{personId}` | 24h | TTL only |
 | `ott:availability:{tmdbId}` | 6h | TTL only |
-| `watchlist:user:{userId}` | 1h | add/remove watchlist |
+| `watchlist:user:{userId}` | 1h | add/remove/watched toggle |
 
 ### Security
 
 - **Auth:** Firebase JWT in `Authorization: Bearer {token}`
 - **Filter:** `FirebaseAuthFilter` validates token, sets `UsernamePasswordAuthenticationToken` in context
 - **CORS:** Allow only frontend Vercel domain (and `localhost:5173` in dev)
-- **Rate limit:** 10 search requests/minute per IP (Spring filter or Redis counter)
+- **Rate limit:** 10 search requests/minute per IP (Spring filter or Redis counter) — not yet implemented
 - **Input validation:** `@Valid` + Bean Validation on all request DTOs
 - **SQL injection:** Spring Data JPA parameterized queries (no raw SQL except scheduled job)
-- **Public endpoints:** `/api/health`, `/api/movies/search`, `/api/movies/{id}`
+- **Public endpoints:** `/api/health`, `/api/movies/**`
 - **Protected endpoints:** all `/api/watchlist/**`
+- **Login-gated on frontend (not backend):** actor filmography drawer, recently viewed shelf
 
 ### Async Configuration
 
@@ -468,59 +538,84 @@ public Executor apiCallExecutor() {
 
 ```
 HomePage
-├── Header (SearchBar)
-├── TrendingSection
-│   └── MovieGrid → MovieCard[]
-└── Footer
+├── Navbar (SearchBar w/ autocomplete, ThemeToggle, Auth)
+├── HeroSection (auto-rotating from trending[0..4])
+├── SearchBar (standalone CTA)
+├── RecentlyViewedShelf (login-gated, localStorage)
+└── MovieGrid (trending, max 12) → MovieCard[]
 
 SearchPage (?q=query)
-├── Header (SearchBar — pre-filled)
-└── MovieGrid (infinite scroll)
-    └── MovieCard
-        ├── PlatformBadge[]
-        └── WatchlistButton
+├── Navbar
+├── SearchBar (pre-filled)
+├── Sort dropdown (Relevance / Rating / Year↑↓)
+├── Filter chips (Movie/TV • Netflix/PrimeVideo/Hotstar…)
+└── MovieGrid → MovieCard[]
 
-MovieDetailPage (/movie/:tmdbId)
-├── Header
-├── MovieHero (backdrop, title, overview)
-├── PlatformList → PlatformBadge[]
-└── WatchlistButton
+TrendingPage (/trending)
+├── Navbar
+└── MovieGrid (all trending) → MovieCard[]
+
+MovieDetailPage (/movie/:tmdbId?type=movie|tv)
+├── Navbar
+├── Backdrop + gradient overlay
+├── Poster + metadata (rating, year, genres, runtime, tagline)
+├── PlatformBadge[] or "not available" notice
+├── Actions: [Watch Trailer] [Add to Watchlist] [Watch on X] [Share]
+├── Cast row → ActorDrawer (login-gated)
+├── TrailerModal (YouTube iframe, AnimatePresence)
+└── ActorDrawer (slide-in, TMDB person credits)
 
 WatchlistPage (/watchlist)           ← Auth required
-├── Header
-└── WatchlistItem[]
-    ├── MovieCard (compact)
-    ├── PlatformBadge[]
+├── Navbar
+└── WatchlistCard[]
+    ├── Poster + title + platforms
+    ├── Mark as watched toggle (optimistic update)
     └── ExpiryWarning (if expiring < 7 days)
+
+ProfilePage (/profile)               ← Auth required
+├── Navbar
+└── Display name editor + Firebase avatar
 ```
 
 ### Custom Hooks
 
 ```typescript
-// useMovieSearch — debounced search
-useMovieSearch(query: string): {
-  data: MovieSearchResult[] | undefined,
-  isLoading: boolean,
-  error: Error | null
+// useMovies.ts — all movie-related React Query hooks
+useTrending(): { data: MovieSearchResult[], isLoading, isError }
+useMovieSearch(query: string): { data: MovieSearchResult[], isLoading, isError }
+useMovieDetail(tmdbId: number, type?: string): { data: MovieDetail, isLoading, isError }
+usePersonFilmography(personId: number | null): { data: PersonFilmography, isLoading }
+  // enabled only when personId !== null && > 0; staleTime 30 min
+
+// useWatchlist.ts — full watchlist management
+useWatchlist(): { data: WatchlistItem[] }
+useAddToWatchlist(): { mutateAsync }
+useRemoveFromWatchlist(): { mutateAsync }
+useToggleWatched(): { mutateAsync }           // optimistic update
+useIsInWatchlist(tmdbId: number): boolean
+
+// useRecentlyViewed.ts — localStorage, max 10 items, deduped by tmdbId
+useRecentlyViewed(): {
+  items: MovieSearchResult[],
+  addItem: (movie: MovieSearchResult) => void,
+  clearAll: () => void
 }
 
-// useWatchlist — full watchlist management
-useWatchlist(): {
-  items: WatchlistItem[],
-  isLoading: boolean,
-  addToWatchlist: (movieId: number) => Promise<void>,
-  removeFromWatchlist: (watchlistId: number) => Promise<void>,
-  isInWatchlist: (movieId: number) => boolean
-}
-
-// useAuth — Firebase auth wrapper
+// useAuth — from AuthContext
 useAuth(): {
   user: FirebaseUser | null,
   isLoading: boolean,
-  login: (email: string, password: string) => Promise<void>,
-  logout: () => Promise<void>,
-  register: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>,
+  signOut: () => Promise<void>
 }
+
+// useTheme — from ThemeContext
+useTheme(): { theme: 'dark' | 'light', toggle: () => void }
+
+// useUser.ts — profile stats and preferences
+useUserStats(): { data: UserStats }
+useUserPreferences(): { data: UserPreferences }
+useSavePreferences(): { mutateAsync: (prefs: UserPreferences) => Promise<void>, isPending }
 ```
 
 ### TypeScript Types
@@ -532,11 +627,21 @@ interface MovieSearchResult {
   tmdbId: number;
   title: string;
   posterUrl: string | null;
+  backdropUrl: string | null;
   overview: string;
   releaseDate: string;
   mediaType: 'movie' | 'tv';
   voteAverage: number;
+  voteCount?: number;
   platforms: OttAvailability[];
+}
+
+interface MovieDetail extends MovieSearchResult {
+  tagline?: string;
+  genres?: string[];
+  runtime?: number;
+  trailerKey?: string | null;
+  cast?: CastMember[];
 }
 
 interface OttAvailability {
@@ -547,11 +652,38 @@ interface OttAvailability {
   availableUntil: string | null;
 }
 
+interface CastMember {
+  personId?: number | null;   // TMDB person ID — null for uncredited
+  name: string;
+  character: string;
+  profileUrl: string | null;
+}
+
+interface PersonFilmography {
+  personId: number;
+  name: string;
+  profileUrl: string | null;
+  knownFor: string | null;
+  credits: MovieSearchResult[];
+}
+
 interface WatchlistItem {
   id: number;
   movie: MovieSearchResult;
   addedAt: string;
+  watchedAt: string | null;   // null = not yet watched
   expiringPlatforms: OttAvailability[];
+}
+
+interface UserStats {
+  favouriteGenre: string | null;
+  totalWatchlist: number;
+  totalWatched: number;
+}
+
+interface UserPreferences {
+  genres: string[];
+  platforms: string[];
 }
 
 interface ApiResponse<T> {
@@ -568,8 +700,10 @@ interface ApiResponse<T> {
 |---|---|---|
 | Server data (movies, watchlist) | React Query | Caching, refetch, loading states built in |
 | Auth state | Context API + Firebase | Global, needs to persist across nav |
+| Theme (dark/light) | ThemeContext + localStorage | Global, anti-flash via inline script in index.html |
+| Recently viewed | localStorage + useState | No backend needed, survives refresh |
 | Search input | Local `useState` | Component-scoped |
-| UI state (modals, theme) | Local `useState` | Simple, co-located |
+| UI state (modals, drawers) | Local `useState` | Simple, co-located |
 
 ---
 
@@ -584,9 +718,10 @@ interface ApiResponse<T> {
 | Endpoint | Use |
 |---|---|
 | `GET /search/multi?query={q}&page={n}` | Search movies + TV |
-| `GET /movie/{tmdb_id}` | Movie details |
-| `GET /tv/{tmdb_id}` | TV show details |
+| `GET /movie/{tmdb_id}?append_to_response=credits,videos` | Movie details with cast + trailer |
+| `GET /tv/{tmdb_id}?append_to_response=credits,videos` | TV show details with cast + trailer |
 | `GET /trending/all/day` | Homepage trending |
+| `GET /person/{tmdb_id}?append_to_response=combined_credits` | Actor filmography |
 
 Image URL pattern: `https://image.tmdb.org/t/p/w500/{poster_path}`
 
@@ -712,67 +847,11 @@ jobs:
 
 ---
 
-## 3-Day Build Plan
+## Build Status
 
-### Day 1 — Backend Foundation
+MVP is live and deployed. See `ROADMAP.md` for the full feature backlog and phase plan.
 
-**Goal:** Running Spring Boot app connected to Postgres + Redis with TMDB working
-
-- [ ] `backend/` Maven project: `pom.xml` with all dependencies
-- [ ] `docker-compose.yml` at root
-- [ ] `application.yml` + `application-local.yml`
-- [ ] Flyway migrations V1–V7 (all tables + platform seeds)
-- [ ] All JPA Entities (User, Movie, OttPlatform, MovieAvailability, Watchlist, NotificationLog)
-- [ ] All Spring Data JPA Repositories
-- [ ] All DTOs/Records (ApiResponse, MovieSearchResult, MovieDetail, OttAvailability, WatchlistItem)
-- [ ] Custom exceptions + GlobalExceptionHandler
-- [ ] RedisConfig, RestTemplateConfig, AsyncConfig
-- [ ] TMDBService (search, getDetails, getTrending) with Redis caching
-- [ ] OTTAvailabilityService (JustWatch call, provider_id mapping)
-- [ ] HealthController → `GET /api/health`
-- [ ] Verify: `docker-compose up` + `mvn spring-boot:run` + TMDB call returns data
-
-### Day 2 — Core Backend Features + Auth
-
-**Goal:** All API endpoints working, auth protected, tested
-
-- [ ] FirebaseAuthFilter (JWT validation, SecurityContext setup)
-- [ ] SecurityConfig (public vs protected routes, CORS)
-- [ ] MovieSearchService (orchestrate TMDB + OTT in parallel)
-- [ ] WatchlistService (CRUD + freemium limit check)
-- [ ] MovieController → `GET /api/movies/search`, `GET /api/movies/{id}`
-- [ ] WatchlistController → full CRUD + `/expiring`
-- [ ] Unit tests: MovieSearchServiceTest, TMDBServiceTest, WatchlistServiceTest
-- [ ] Integration test: MovieControllerTest (TestContainers)
-- [ ] Verify: Postman collection covers all endpoints
-
-### Day 3 — Frontend + Deploy
-
-**Goal:** Working UI deployed to public URL
-
-- [ ] `frontend/` Vite + React + TypeScript + Tailwind setup
-- [ ] `src/types/index.ts` — all TypeScript interfaces
-- [ ] `src/api/axios.ts` — Axios instance (base URL, auth header interceptor)
-- [ ] `src/api/movies.ts` + `src/api/watchlist.ts`
-- [ ] `AuthContext.tsx` + `useAuth.ts` hook (Firebase)
-- [ ] `useMovieSearch.ts` hook (debounced, React Query)
-- [ ] `useWatchlist.ts` hook (React Query + optimistic updates)
-- [ ] Components: SearchBar, MovieCard, MovieGrid, PlatformBadge, MovieCardSkeleton
-- [ ] Pages: HomePage, SearchPage, MovieDetailPage, WatchlistPage, NotFoundPage
-- [ ] React Router v6 routes
-- [ ] Mobile-first responsive layout (Tailwind)
-- [ ] Deploy backend to Railway.app
-- [ ] Deploy frontend to Vercel
-- [ ] Verify: end-to-end search → watchlist on live URL
-
-### Post-MVP (Week 2)
-
-- [ ] ExpiringContentService scheduled job
-- [ ] NotificationService (Firebase FCM)
-- [ ] ContentRefreshScheduler (trending catalog)
-- [ ] GitHub Actions CI/CD pipeline
-- [ ] OTT scraping fallback (Playwright)
-- [ ] PWA manifest + service worker
+**Next migration:** V11 — add `role VARCHAR DEFAULT 'user'` to `users` (Phase 1.5 admin role)
 
 ---
 
@@ -795,8 +874,12 @@ jobs:
 | JustWatch unofficial API | No official Indian OTT API exists; JustWatch has comprehensive data. Mitigated by 6h cache + graceful fallback. |
 | Firebase Auth (not custom) | Saves 1+ day of auth implementation; security handled by Google. |
 | RestTemplate over WebClient | Synchronous calls are fine since we use CompletableFuture manually; simpler than reactive. |
-| Railway + Vercel free tier | Zero cost for portfolio. 500h/month Railway is enough for demo traffic. |
+| Railway Hobby plan | Upgraded from free trial — $5/mo + compute. Required for persistent backend hosting. |
+| Vercel GitHub webhook broken | Auto-deploy does not trigger on push. Manual deploy required: `cd frontend && vercel --prod`. |
 | Records for DTOs | Immutable, concise, Java 21 idiomatic — no Lombok needed on DTOs. |
 | Lombok only on entities | Entities need mutability; Records don't work with JPA proxies. |
 | No soft-delete | Portfolio scope — hard deletes are fine, simpler to reason about. |
 | `available_until` nullable | JustWatch often doesn't return expiry dates — NULL means "unknown, not necessarily permanent". |
+| Login-gate on frontend only | Actor drawer + recently viewed gated in React (not backend) for simplicity; public API is acceptable since it's read-only TMDB data. |
+| CSS vars for theme | RGB triple format (`6 8 15`) in CSS vars + Tailwind config enables opacity modifier support (`text-cinema-muted/50`). Anti-flash script in `index.html` reads localStorage before React renders. |
+| OTT availability hardcoded to India | JustWatch locale is `en_IN` throughout. Full country support planned for Phase 3b. |
