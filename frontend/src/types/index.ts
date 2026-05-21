@@ -90,6 +90,23 @@ export interface AdminStats {
   totalPlatforms: number
 }
 
+export interface ReviewDto {
+  id: number
+  userDisplayName: string
+  userAvatarUrl: string | null
+  rating: number
+  note: string | null
+  createdAt: string
+  isOwn: boolean
+}
+
+export interface ReviewsResponse {
+  totalReviews: number
+  averageRating: number
+  myReview: ReviewDto | null
+  reviews: ReviewDto[]
+}
+
 export type MediaType = 'movie' | 'tv'
 
 export const PLATFORM_COLORS: Record<string, string> = {

@@ -2,6 +2,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check } from 'lucide-react'
 import { ActorDrawer } from '@/components/movie/ActorDrawer'
+import { ReviewSection } from '@/components/movie/ReviewSection'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
@@ -259,6 +260,16 @@ export function MovieDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Reviews */}
+            <div className="mt-8">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-5 rounded-full bg-accent" />
+                <Star size={15} className="text-cinema-muted" />
+                <h2 className="font-heading font-semibold text-cinema-text text-base">Reviews</h2>
+              </div>
+              <ReviewSection tmdbId={movie.tmdbId} />
+            </div>
 
             {/* Expiry warning */}
             {watchlistEntry?.expiringPlatforms && watchlistEntry.expiringPlatforms.length > 0 && (
