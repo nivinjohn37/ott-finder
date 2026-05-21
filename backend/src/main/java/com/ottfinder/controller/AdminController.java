@@ -15,6 +15,7 @@ import com.ottfinder.security.FirebasePrincipal;
 import com.ottfinder.service.MovieSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +35,7 @@ public class AdminController {
     private final OttPlatformRepository ottPlatformRepository;
     private final MovieAvailabilityRepository movieAvailabilityRepository;
     private final MovieSearchService movieSearchService;
+    private final StringRedisTemplate redisTemplate;
 
     private boolean isAdmin(FirebasePrincipal principal) {
         if (principal == null) return false;
@@ -134,6 +136,9 @@ public class AdminController {
                         .build());
 
         movieAvailabilityRepository.save(availability);
+
+        redisTemplate.delete("ott:availability:" + body.tmdbId());
+        redisTemplate.delete("tmdb:movie:" + body.tmdbId());
         log.info("Admin seeded availability: tmdbId={} on platform={}", body.tmdbId(), body.platformName());
 
         return ResponseEntity.ok(ApiResponse.success(
