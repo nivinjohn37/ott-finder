@@ -1,6 +1,7 @@
 package com.ottfinder.controller;
 
 import com.ottfinder.dto.response.ApiResponse;
+import com.ottfinder.dto.response.UserMe;
 import com.ottfinder.dto.response.UserPreferencesDto;
 import com.ottfinder.dto.response.UserStats;
 import com.ottfinder.entity.User;
@@ -35,6 +36,18 @@ public class UserController {
     private final UserRepository userRepository;
     private final WatchlistRepository watchlistRepository;
     private final UserPreferenceRepository userPreferenceRepository;
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserMe>> getMe(
+            @AuthenticationPrincipal FirebasePrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("UNAUTHORIZED", "Authentication required"));
+        }
+        return userRepository.findByFirebaseUid(principal.uid())
+                .map(u -> ResponseEntity.ok(ApiResponse.success(
+                        new UserMe(u.getFirebaseUid(), u.getEmail(), u.getDisplayName(), u.getRole()))))
+                .orElse(ResponseEntity.status(404).body(ApiResponse.error("USER_NOT_FOUND", "User not found")));
+    }
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<UserStats>> getStats(

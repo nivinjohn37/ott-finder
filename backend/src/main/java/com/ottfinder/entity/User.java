@@ -37,6 +37,10 @@ public class User {
     @Column(name = "avatar_content_type", length = 100)
     private String avatarContentType;
 
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String role = "user";
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

@@ -65,6 +65,13 @@ export interface WatchlistItem {
   expiringPlatforms: OttAvailability[]
 }
 
+export interface UserMe {
+  uid: string
+  email: string
+  displayName: string | null
+  role: 'user' | 'admin'
+}
+
 export interface UserStats {
   favouriteGenre: string | null
   totalWatchlist: number
@@ -74,6 +81,13 @@ export interface UserStats {
 export interface UserPreferences {
   genres: string[]
   platforms: string[]
+}
+
+export interface AdminStats {
+  totalUsers: number
+  totalWatchlistEntries: number
+  totalMoviesInDb: number
+  totalPlatforms: number
 }
 
 export type MediaType = 'movie' | 'tv'

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon } from 'lucide-react'
+import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
+import { useCurrentUser } from '@/hooks/useUser'
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -12,6 +13,7 @@ export function Navbar() {
   const [searchVal, setSearchVal] = useState('')
   const { user, signInWithGoogle, logout } = useAuth()
   const { theme, toggle } = useTheme()
+  const { data: me } = useCurrentUser()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -105,6 +107,16 @@ export function Navbar() {
                         </div>
                       )}
                     </Link>
+                    {me?.role === 'admin' && (
+                      <Link
+                        to="/admin"
+                        className="p-1.5 rounded-lg text-cinema-muted hover:text-accent transition-colors"
+                        aria-label="Admin"
+                        title="Admin Dashboard"
+                      >
+                        <ShieldCheck size={16} />
+                      </Link>
+                    )}
                     <button
                       onClick={logout}
                       className="p-1.5 rounded-lg text-cinema-muted hover:text-red-400 transition-colors"
@@ -192,6 +204,7 @@ export function Navbar() {
               <MobileLink to="/trending" label="Trending" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
               {user && <MobileLink to="/profile" label="Profile" />}
+              {me?.role === 'admin' && <MobileLink to="/admin" label="Admin" />}
               {user ? (
                 <button
                   onClick={logout}

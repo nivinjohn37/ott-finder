@@ -36,7 +36,7 @@ public class SecurityConfig {
                     .addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers("/api/health", "/api/movies/**", "/api/user/avatar/*").permitAll()
-                            .requestMatchers("/api/watchlist/**", "/api/user/**").authenticated()
+                            .requestMatchers("/api/watchlist/**", "/api/user/**", "/api/admin/**").authenticated()
                             .anyRequest().denyAll()
                     );
         } else {
@@ -55,7 +55,7 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "https://*.vercel.app"
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "DELETE", "PATCH", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

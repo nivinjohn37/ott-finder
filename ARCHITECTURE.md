@@ -297,8 +297,9 @@ notification_logs (
 | V9 | Add `watched_at` to watchlists (mark as watched feature) |
 | V10 | Add `avatar_data` + `avatar_content_type` to users (profile avatar upload) |
 | V11 | Add `genres TEXT` to movies; create `user_preferences` table |
+| V12 | Add `role VARCHAR(20) DEFAULT 'user'` to users |
 
-Next available: **V12** (reserved for admin role column per roadmap Phase 1.5)
+Next available: **V13**
 
 ### OTT Platform Seeds (V7 migration)
 
@@ -456,6 +457,17 @@ POST /api/user/avatar                  ← Auth required (multipart)
 
 GET  /api/user/avatar/{uid}            ← Public
      → 200 image bytes
+
+GET  /api/admin/stats                  ← Auth required, admin role
+     → 200 ApiResponse<AdminStats>
+
+GET  /api/admin/platforms              ← Auth required, admin role
+     → 200 ApiResponse<List<OttAvailability>>
+
+POST /api/admin/availability           ← Auth required, admin role
+     Body: { tmdbId, mediaType, platformName, deepLink?, availableUntil? }
+     → 200 ApiResponse<String> (confirmation message)
+     Upserts movie_availability; fetches movie from TMDB if not in DB
 ```
 
 ### Standard Response Envelope

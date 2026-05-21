@@ -34,8 +34,8 @@ Last updated: 2026-05-21
 
 - [x] **User profile page** `/profile` — display name, Firebase avatar, joined date, stats: movies watched, watchlist size, favourite genre (derived from watchlist genres via V11 migration).
 - [x] **Genre/platform preferences** — multi-select chip picker on profile page. V11 migration: `user_preferences` table. `GET/PUT /api/user/preferences`. Powers "For You" shelf in Phase 3.
-- [ ] **Admin role** — add `role VARCHAR DEFAULT 'user'` to `users` table (V12 migration). First admin seeded manually in Railway DB. New endpoints under `/api/admin/**` gated by role check.
-- [ ] **Admin dashboard** `/admin` — OTT availability seeding form, platform management, basic user stats. Gated on both frontend route and backend.
+- [x] **Admin role** — V12 migration: `role VARCHAR(20) DEFAULT 'user'` on `users` table. `GET /api/user/me` returns role. First admin set via Railway DB: `UPDATE users SET role='admin' WHERE email='...'`.
+- [x] **Admin dashboard** `/admin` — stats cards (users, watchlist entries, movies in DB, platforms), OTT availability seeding form (search → pick platform → deep link → expiry). Role-gated on frontend (Navigate redirect) and backend (isAdmin check per endpoint).
 
 ---
 
