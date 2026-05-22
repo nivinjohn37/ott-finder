@@ -90,6 +90,16 @@ export interface AdminStats {
   totalPlatforms: number
 }
 
+export interface AdminUserDto {
+  id: number
+  email: string
+  displayName: string | null
+  role: string
+  joinedAt: string | null
+  watchlistCount: number
+  reviewCount: number
+}
+
 export interface ReviewDto {
   id: number
   userDisplayName: string

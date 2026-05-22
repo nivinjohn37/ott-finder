@@ -1,6 +1,7 @@
 package com.ottfinder.controller;
 
 import com.ottfinder.dto.response.AdminStats;
+import com.ottfinder.dto.response.AdminUserDto;
 import com.ottfinder.dto.response.ApiResponse;
 import com.ottfinder.dto.response.OttAvailability;
 import com.ottfinder.entity.Movie;
@@ -36,6 +37,7 @@ public class AdminController {
     private final MovieAvailabilityRepository movieAvailabilityRepository;
     private final MovieSearchService movieSearchService;
     private final StringRedisTemplate redisTemplate;
+    private final com.ottfinder.repository.ReviewRepository reviewRepository;
 
     private boolean isAdmin(FirebasePrincipal principal) {
         if (principal == null) return false;
@@ -56,6 +58,28 @@ public class AdminController {
                 movieRepository.count(),
                 ottPlatformRepository.count()
         )));
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<ApiResponse<List<AdminUserDto>>> getUsers(
+            @AuthenticationPrincipal FirebasePrincipal principal) {
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+        List<AdminUserDto> users = userRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(com.ottfinder.entity.User::getCreatedAt,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
+                .map(u -> new AdminUserDto(
+                        u.getId(),
+                        u.getEmail(),
+                        u.getDisplayName(),
+                        u.getRole(),
+                        u.getCreatedAt(),
+                        watchlistRepository.countByUserId(u.getId()),
+                        reviewRepository.countByUserId(u.getId())
+                ))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(users));
     }
 
     @GetMapping("/platforms")

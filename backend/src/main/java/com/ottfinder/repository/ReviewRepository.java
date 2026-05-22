@@ -18,4 +18,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @Query("SELECT COUNT(r), COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.movie.tmdbId = :tmdbId")
     List<Object[]> getAggregateByMovieTmdbId(@Param("tmdbId") Integer tmdbId);
+
+    long countByUserId(Long userId);
 }

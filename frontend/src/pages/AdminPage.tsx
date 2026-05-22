@@ -1,12 +1,12 @@
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Navigate } from 'react-router-dom'
-import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database } from 'lucide-react'
+import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database, X, Star } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { useCurrentUser, useAdminStats, useAdminPlatforms, useSeedAvailability } from '@/hooks/useUser'
+import { useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers, useSeedAvailability } from '@/hooks/useUser'
 import { searchMovies } from '@/api/movies'
-import type { MovieSearchResult } from '@/types'
+import type { AdminUserDto, MovieSearchResult } from '@/types'
 
 export function AdminPage() {
   const { user } = useAuth()
@@ -65,26 +65,123 @@ function SectionHeading({ icon, title }: { icon: ReactNode; title: string }) {
 
 function StatsGrid() {
   const { data: stats, isLoading } = useAdminStats()
+  const [showUsers, setShowUsers] = useState(false)
 
   const cards = [
-    { icon: <Users size={18} />, label: 'Total Users', value: stats?.totalUsers },
-    { icon: <Bookmark size={18} />, label: 'Watchlist Entries', value: stats?.totalWatchlistEntries },
-    { icon: <Film size={18} />, label: 'Movies in DB', value: stats?.totalMoviesInDb },
-    { icon: <Tv2 size={18} />, label: 'OTT Platforms', value: stats?.totalPlatforms },
+    { icon: <Users size={18} />, label: 'Total Users', value: stats?.totalUsers, clickable: true, onClick: () => setShowUsers(true) },
+    { icon: <Bookmark size={18} />, label: 'Watchlist Entries', value: stats?.totalWatchlistEntries, clickable: false },
+    { icon: <Film size={18} />, label: 'Movies in DB', value: stats?.totalMoviesInDb, clickable: false },
+    { icon: <Tv2 size={18} />, label: 'OTT Platforms', value: stats?.totalPlatforms, clickable: false },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      {cards.map(({ icon, label, value }) => (
-        <div key={label} className="bg-cinema-navy rounded-xl border border-cinema-navy-border p-4 space-y-2">
-          <div className="text-cinema-muted">{icon}</div>
-          <div className="font-heading font-bold text-2xl text-cinema-text">
-            {isLoading ? '—' : value?.toLocaleString() ?? '—'}
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {cards.map(({ icon, label, value, clickable, onClick }) => (
+          <div
+            key={label}
+            onClick={onClick}
+            className={`bg-cinema-navy rounded-xl border border-cinema-navy-border p-4 space-y-2 ${clickable ? 'cursor-pointer hover:border-accent/40 hover:bg-cinema-navy-hover transition-colors' : ''}`}
+          >
+            <div className="text-cinema-muted">{icon}</div>
+            <div className="font-heading font-bold text-2xl text-cinema-text">
+              {isLoading ? '—' : value?.toLocaleString() ?? '—'}
+            </div>
+            <div className="text-cinema-muted/60 text-xs font-body">
+              {label}{clickable && <span className="ml-1 text-accent/50">↗</span>}
+            </div>
           </div>
-          <div className="text-cinema-muted/60 text-xs font-body">{label}</div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {showUsers && <UserListModal onClose={() => setShowUsers(false)} />}
+      </AnimatePresence>
+    </>
+  )
+}
+
+function UserListModal({ onClose }: { onClose: () => void }) {
+  const { data: users = [], isLoading } = useAdminUsers()
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <div className="absolute inset-0 bg-cinema-black/80 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        className="relative w-full max-w-3xl bg-cinema-navy border border-cinema-navy-border rounded-2xl overflow-hidden shadow-2xl"
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 24, opacity: 0 }}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-cinema-navy-border">
+          <div className="flex items-center gap-2">
+            <Users size={16} className="text-accent" />
+            <h2 className="font-heading font-semibold text-cinema-text">All Users</h2>
+            <span className="text-cinema-muted/50 text-sm font-body">({users.length})</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-cinema-muted hover:text-cinema-text transition-colors">
+            <X size={18} />
+          </button>
         </div>
-      ))}
-    </div>
+
+        <div className="overflow-y-auto max-h-[60vh]">
+          {isLoading ? (
+            <div className="flex justify-center py-12"><Loader2 size={24} className="text-accent animate-spin" /></div>
+          ) : users.length === 0 ? (
+            <p className="text-cinema-muted text-sm font-body text-center py-12">No users yet.</p>
+          ) : (
+            <table className="w-full text-sm font-body">
+              <thead className="sticky top-0 bg-cinema-navy border-b border-cinema-navy-border">
+                <tr>
+                  {['User', 'Role', 'Joined', 'Watchlist', 'Reviews'].map(h => (
+                    <th key={h} className="text-left px-6 py-3 text-cinema-muted/60 text-xs font-semibold uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-cinema-navy-border">
+                {users.map((u) => <UserRow key={u.id} user={u} />)}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+function UserRow({ user }: { user: AdminUserDto }) {
+  return (
+    <tr className="hover:bg-cinema-surface/40 transition-colors">
+      <td className="px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full accent-gradient flex items-center justify-center text-white text-xs font-heading font-bold shrink-0">
+            {(user.displayName ?? user.email).charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-cinema-text font-medium truncate">{user.displayName ?? '—'}</p>
+            <p className="text-cinema-muted/60 text-xs truncate">{user.email}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-3">
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+          user.role === 'admin' ? 'bg-accent/15 text-accent' : 'bg-cinema-surface text-cinema-muted'
+        }`}>
+          {user.role === 'admin' && <Star size={10} className="fill-accent" />}
+          {user.role}
+        </span>
+      </td>
+      <td className="px-6 py-3 text-cinema-muted text-xs">
+        {user.joinedAt ? new Date(user.joinedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+      </td>
+      <td className="px-6 py-3 text-cinema-text font-medium">{user.watchlistCount}</td>
+      <td className="px-6 py-3 text-cinema-text font-medium">{user.reviewCount}</td>
+    </tr>
   )
 }
 

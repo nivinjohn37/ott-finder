@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getAdminPlatforms, getAdminStats, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability } from '@/api/user'
+import { getAdminPlatforms, getAdminStats, getAdminUsers, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability } from '@/api/user'
 import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
@@ -10,6 +10,14 @@ export function useCurrentUser() {
     queryFn: getUserMe,
     staleTime: 10 * 60 * 1000,
     enabled: !!user,
+  })
+}
+
+export function useAdminUsers() {
+  return useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: getAdminUsers,
+    staleTime: 60 * 1000,
   })
 }
 

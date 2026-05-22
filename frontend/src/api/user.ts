@@ -1,4 +1,4 @@
-import type { AdminStats, ApiResponse, UserMe, UserPreferences, UserStats } from '@/types'
+import type { AdminStats, AdminUserDto, ApiResponse, UserMe, UserPreferences, UserStats } from '@/types'
 import api from './axios'
 
 export async function getUserMe(): Promise<UserMe> {
@@ -26,6 +26,11 @@ export async function getAdminStats(): Promise<AdminStats> {
   const res = await api.get<ApiResponse<AdminStats>>('/admin/stats')
   if (!res.data.data) throw new Error('Failed to fetch admin stats')
   return res.data.data
+}
+
+export async function getAdminUsers(): Promise<AdminUserDto[]> {
+  const res = await api.get<ApiResponse<AdminUserDto[]>>('/admin/users')
+  return res.data.data ?? []
 }
 
 export async function getAdminPlatforms(): Promise<{ name: string; displayName: string }[]> {

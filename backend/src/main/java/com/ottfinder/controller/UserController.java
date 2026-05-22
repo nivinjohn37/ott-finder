@@ -38,15 +38,20 @@ public class UserController {
     private final UserPreferenceRepository userPreferenceRepository;
 
     @GetMapping("/me")
+    @Transactional
     public ResponseEntity<ApiResponse<UserMe>> getMe(
             @AuthenticationPrincipal FirebasePrincipal principal) {
         if (principal == null) {
             return ResponseEntity.status(401).body(ApiResponse.error("UNAUTHORIZED", "Authentication required"));
         }
-        return userRepository.findByFirebaseUid(principal.uid())
-                .map(u -> ResponseEntity.ok(ApiResponse.success(
-                        new UserMe(u.getFirebaseUid(), u.getEmail(), u.getDisplayName(), u.getRole()))))
-                .orElse(ResponseEntity.status(404).body(ApiResponse.error("USER_NOT_FOUND", "User not found")));
+        User user = userRepository.findByFirebaseUid(principal.uid())
+                .orElseGet(() -> userRepository.save(User.builder()
+                        .firebaseUid(principal.uid())
+                        .email(principal.email() != null ? principal.email() : principal.uid() + "@firebase.local")
+                        .displayName(principal.displayName())
+                        .build()));
+        return ResponseEntity.ok(ApiResponse.success(
+                new UserMe(user.getFirebaseUid(), user.getEmail(), user.getDisplayName(), user.getRole())));
     }
 
     @GetMapping("/stats")
