@@ -110,6 +110,10 @@ public class MovieSearchService {
         return tmdbService.getPersonFilmography(personId);
     }
 
+    public List<MovieSearchResult> getGenreMovies(String genreName) {
+        return tmdbService.getGenreMovies(genreName);
+    }
+
     public List<MovieSearchResult> getTrending() {
         List<MovieSearchResult> trending = tmdbService.getTrending();
         CompletableFuture.runAsync(() -> persistNewMovies(trending), apiCallExecutor);

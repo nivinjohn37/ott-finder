@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 @Service
@@ -44,9 +45,31 @@ public class TMDBService {
     @Value("${tmdb.image-base-url}")
     private String imageBaseUrl;
 
-    private static final Duration SEARCH_TTL = Duration.ofHours(24);
-    private static final Duration DETAIL_TTL = Duration.ofHours(24);
+    private static final Duration SEARCH_TTL   = Duration.ofHours(24);
+    private static final Duration DETAIL_TTL   = Duration.ofHours(24);
     private static final Duration TRENDING_TTL = Duration.ofHours(6);
+    private static final Duration GENRE_TTL    = Duration.ofHours(6);
+
+    private static final Map<String, Integer> GENRE_IDS = Map.ofEntries(
+        Map.entry("Action", 28),
+        Map.entry("Adventure", 12),
+        Map.entry("Animation", 16),
+        Map.entry("Comedy", 35),
+        Map.entry("Crime", 80),
+        Map.entry("Documentary", 99),
+        Map.entry("Drama", 18),
+        Map.entry("Family", 10751),
+        Map.entry("Fantasy", 14),
+        Map.entry("History", 36),
+        Map.entry("Horror", 27),
+        Map.entry("Music", 10402),
+        Map.entry("Mystery", 9648),
+        Map.entry("Romance", 10749),
+        Map.entry("Science Fiction", 878),
+        Map.entry("Thriller", 53),
+        Map.entry("War", 10752),
+        Map.entry("Western", 37)
+    );
 
     public List<MovieSearchResult> search(String query) {
         String cacheKey = "tmdb:search:" + query.toLowerCase().replaceAll("\\s+", "_");
@@ -103,6 +126,33 @@ public class TMDBService {
         List<MovieSearchResult> results = fetchAndMapResults(url);
         if (!results.isEmpty()) cache(cacheKey, results, TRENDING_TTL);
         return results;
+    }
+
+    public List<MovieSearchResult> getGenreMovies(String genreName) {
+        Integer genreId = GENRE_IDS.get(genreName);
+        if (genreId == null) return Collections.emptyList();
+
+        String cacheKey = "tmdb:genre:" + genreId;
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return deserializeList(cached, new TypeReference<>() {});
+        }
+
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/discover/movie")
+                .queryParam("api_key", apiKey)
+                .queryParam("language", "en-US")
+                .queryParam("with_genres", genreId)
+                .queryParam("sort_by", "popularity.desc")
+                .queryParam("page", 1)
+                .toUriString();
+
+        List<MovieSearchResult> results = fetchAndMapResults(url);
+        if (!results.isEmpty()) cache(cacheKey, results, GENRE_TTL);
+        return results;
+    }
+
+    public Set<String> getSupportedGenres() {
+        return GENRE_IDS.keySet();
     }
 
     public PersonFilmography getPersonFilmography(Integer personId) {

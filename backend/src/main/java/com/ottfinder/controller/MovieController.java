@@ -46,6 +46,16 @@ public class MovieController {
         return ResponseEntity.ok(ApiResponse.success(filmography));
     }
 
+    @GetMapping("/genre")
+    public ResponseEntity<ApiResponse<List<MovieSearchResult>>> getGenreMovies(
+            @RequestParam String name) {
+        if (name == null || name.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("VALIDATION_ERROR", "Genre name is required"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(movieSearchService.getGenreMovies(name.trim())));
+    }
+
     @GetMapping("/{tmdbId}")
     public ResponseEntity<ApiResponse<MovieDetail>> getDetail(
             @PathVariable Integer tmdbId,

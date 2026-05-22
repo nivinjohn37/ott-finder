@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography } from '@/api/movies'
+import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies } from '@/api/movies'
 
 export function useSearch(query: string) {
   return useQuery({
@@ -23,6 +23,15 @@ export function useMovieDetail(tmdbId: number, type?: string) {
     queryKey: ['movies', 'detail', tmdbId, type],
     queryFn: () => getMovieDetail(tmdbId, type),
     staleTime: 15 * 60 * 1000,
+  })
+}
+
+export function useGenreMovies(genreName: string | null) {
+  return useQuery({
+    queryKey: ['genre', genreName],
+    queryFn: () => getGenreMovies(genreName!),
+    enabled: !!genreName,
+    staleTime: 6 * 60 * 60 * 1000,
   })
 }
 

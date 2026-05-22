@@ -24,3 +24,10 @@ export async function getPersonFilmography(personId: number): Promise<PersonFilm
   if (!res.data.data) throw new Error('Person not found')
   return res.data.data
 }
+
+export async function getGenreMovies(genreName: string): Promise<MovieSearchResult[]> {
+  const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/genre', {
+    params: { name: genreName },
+  })
+  return res.data.data ?? []
+}

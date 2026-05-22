@@ -2,6 +2,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check } from 'lucide-react'
 import { ActorDrawer } from '@/components/movie/ActorDrawer'
+import { GenreDrawer } from '@/components/movie/GenreDrawer'
 import { ReviewSection } from '@/components/movie/ReviewSection'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
@@ -26,6 +27,7 @@ export function MovieDetailPage() {
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [shared, setShared] = useState(false)
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null)
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
   const { addItem } = useRecentlyViewed()
 
   useEffect(() => {
@@ -140,9 +142,13 @@ export function MovieDetailPage() {
             {/* Genres + runtime */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
               {movie.genres?.map((g) => (
-                <span key={g} className="px-2.5 py-0.5 rounded-full bg-cinema-navy border border-cinema-navy-border text-cinema-muted text-xs font-body">
+                <button
+                  key={g}
+                  onClick={() => setSelectedGenre(g)}
+                  className="px-2.5 py-0.5 rounded-full bg-cinema-navy border border-cinema-navy-border text-cinema-muted text-xs font-body hover:border-accent/50 hover:text-accent transition-colors"
+                >
                   {g}
-                </span>
+                </button>
               ))}
               {movie.runtime && movie.runtime > 0 && (
                 <span className="inline-flex items-center gap-1 text-cinema-muted text-xs font-body">
@@ -295,6 +301,15 @@ export function MovieDetailPage() {
           <ActorDrawer
             personId={selectedPersonId}
             onClose={() => setSelectedPersonId(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedGenre !== null && (
+          <GenreDrawer
+            genreName={selectedGenre}
+            onClose={() => setSelectedGenre(null)}
           />
         )}
       </AnimatePresence>
