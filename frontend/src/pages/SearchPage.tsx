@@ -29,27 +29,52 @@ const PLATFORMS = [
 ]
 
 export function SearchPage() {
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
-  const [mediaFilter, setMediaFilter] = useState<MediaType | 'all'>('all')
-  const [sortBy, setSortBy] = useState<SortBy>('relevance')
-  const [activePlatforms, setActivePlatforms] = useState<Set<string>>(new Set())
+  const typeParam = params.get('type')
+  const mediaFilter: MediaType | 'all' = typeParam === 'movie' || typeParam === 'tv' ? typeParam : 'all'
+  const sortParam = params.get('sort')
+  const SORT_VALUES: SortBy[] = ['relevance', 'rating_desc', 'year_desc', 'year_asc']
+  const sortBy: SortBy = SORT_VALUES.includes(sortParam as SortBy) ? (sortParam as SortBy) : 'relevance'
+  const activePlatforms = new Set(params.get('platforms')?.split(',').filter(Boolean) ?? [])
   const [sortOpen, setSortOpen] = useState(false)
 
   const { data, isLoading, isFetching } = useSearch(query)
 
-  function togglePlatform(name: string) {
-    setActivePlatforms((prev) => {
-      const next = new Set(prev)
-      next.has(name) ? next.delete(name) : next.add(name)
+  function setMediaFilter(value: MediaType | 'all') {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      value === 'all' ? next.delete('type') : next.set('type', value)
       return next
-    })
+    }, { replace: true })
+  }
+
+  function setSortBy(value: SortBy) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      value === 'relevance' ? next.delete('sort') : next.set('sort', value)
+      return next
+    }, { replace: true })
+  }
+
+  function togglePlatform(name: string) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      const current = new Set(prev.get('platforms')?.split(',').filter(Boolean) ?? [])
+      current.has(name) ? current.delete(name) : current.add(name)
+      current.size > 0 ? next.set('platforms', [...current].join(',')) : next.delete('platforms')
+      return next
+    }, { replace: true })
   }
 
   function clearFilters() {
-    setMediaFilter('all')
-    setSortBy('relevance')
-    setActivePlatforms(new Set())
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('type')
+      next.delete('sort')
+      next.delete('platforms')
+      return next
+    }, { replace: true })
   }
 
   const hasActiveFilters = mediaFilter !== 'all' || sortBy !== 'relevance' || activePlatforms.size > 0

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, Film, Tv2 } from 'lucide-react'
 import { searchMovies } from '@/api/movies'
@@ -17,6 +17,7 @@ export function SearchBar({ defaultValue = '', autoFocus = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const [currentParams] = useSearchParams()
 
   // Close on outside click
   useEffect(() => {
@@ -54,7 +55,9 @@ export function SearchBar({ defaultValue = '', autoFocus = false }: Props) {
     const q = value.trim()
     if (q.length >= 2) {
       setShowSuggestions(false)
-      navigate(`/search?q=${encodeURIComponent(q)}`)
+      const next = new URLSearchParams(currentParams)
+      next.set('q', q)
+      navigate(`/search?${next.toString()}`)
     }
   }
 

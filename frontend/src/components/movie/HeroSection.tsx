@@ -13,13 +13,14 @@ interface Props {
 export function HeroSection({ movies }: Props) {
   const featured = movies.slice(0, 5)
   const [current, setCurrent] = useState(0)
+  const [paused, setPaused] = useState(false)
   const movie = featured[current]
 
   useEffect(() => {
-    if (featured.length <= 1) return
+    if (featured.length <= 1 || paused) return
     const id = setInterval(() => setCurrent((c) => (c + 1) % featured.length), 6000)
     return () => clearInterval(id)
-  }, [featured.length])
+  }, [featured.length, paused])
 
   if (!movie) return null
 
@@ -28,7 +29,11 @@ export function HeroSection({ movies }: Props) {
     : movie.posterUrl ?? null
 
   return (
-    <div className="relative h-[70vh] min-h-[500px] max-h-[750px] overflow-hidden">
+    <div
+      className="relative h-[70vh] min-h-[500px] max-h-[750px] overflow-hidden"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
       {/* Background */}
       <AnimatePresence mode="wait">
         <motion.div

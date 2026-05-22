@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useGenreMovies } from '@/hooks/useMovies'
 
-const PLACEHOLDER = 'https://via.placeholder.com/300x450/0D1421/8899AA?text=No+Poster'
+const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%230d1421'/%3E%3Crect x='115' y='190' width='70' height='70' rx='4' fill='none' stroke='%231d2c3e' stroke-width='2'/%3E%3Ccircle cx='135' cy='210' r='8' fill='%231d2c3e'/%3E%3Cpolygon points='115,260 142,234 163,248 185,228 185,260' fill='%231d2c3e'/%3E%3C/svg%3E"
 
 interface Props {
   genreName: string

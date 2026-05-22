@@ -11,8 +11,8 @@ import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect } from 'react'
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
 
-const PLACEHOLDER_BACKDROP = 'https://via.placeholder.com/1280x720/0D1421/8899AA?text=No+Image'
-const PLACEHOLDER_POSTER = 'https://via.placeholder.com/300x450/0D1421/8899AA?text=No+Poster'
+const PLACEHOLDER_BACKDROP = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%230d1421'/%3E%3Crect x='6.1' y='3.3' width='3.8' height='2.4' rx='0.2' fill='none' stroke='%231d2c3e' stroke-width='0.12'/%3E%3Ccircle cx='7.1' cy='3.9' r='0.4' fill='%231d2c3e'/%3E%3Cpolygon points='6.1,5.7 7.6,4.3 8.6,4.9 9.9,4 9.9,5.7' fill='%231d2c3e'/%3E%3C/svg%3E"
+const PLACEHOLDER_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%230d1421'/%3E%3Crect x='115' y='190' width='70' height='70' rx='4' fill='none' stroke='%231d2c3e' stroke-width='2'/%3E%3Ccircle cx='135' cy='210' r='8' fill='%231d2c3e'/%3E%3Cpolygon points='115,260 142,234 163,248 185,228 185,260' fill='%231d2c3e'/%3E%3C/svg%3E"
 
 export function MovieDetailPage() {
   const { tmdbId } = useParams<{ tmdbId: string }>()
@@ -29,12 +29,18 @@ export function MovieDetailPage() {
   const [shared, setShared] = useState(false)
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null)
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
+  const [showAllCast, setShowAllCast] = useState(false)
   const { addItem } = useRecentlyViewed()
 
   useEffect(() => {
     if (movie && user) addItem(movie)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [movie?.tmdbId, user?.uid])
+
+  useEffect(() => {
+    if (movie) document.title = `${movie.title} — OTT Finder`
+    return () => { document.title = 'OTT Finder' }
+  }, [movie?.title])
 
   async function handleShare() {
     const url = window.location.href
@@ -198,7 +204,7 @@ export function MovieDetailPage() {
             ) : (
               <div className="mb-6 px-4 py-3 rounded-lg bg-cinema-navy border border-cinema-navy-border">
                 <p className="text-cinema-muted font-body text-sm">
-                  Not currently available on Indian OTT platforms. Add to watchlist to get notified.
+                  Availability unknown — this title may not be indexed yet. Add to watchlist and we'll notify you when it lands on an Indian OTT platform.
                 </p>
               </div>
             )}
@@ -263,7 +269,7 @@ export function MovieDetailPage() {
                   <User size={15} className="text-cinema-muted" /> Cast
                 </h2>
                 <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                  {movie.cast.map((member) => (
+                  {(showAllCast ? movie.cast : movie.cast.slice(0, 12)).map((member) => (
                     <button
                       key={member.name}
                       onClick={() => {
@@ -287,6 +293,14 @@ export function MovieDetailPage() {
                     </button>
                   ))}
                 </div>
+                {movie.cast.length > 12 && (
+                  <button
+                    onClick={() => setShowAllCast((v) => !v)}
+                    className="mt-2 text-xs font-body text-accent hover:text-accent/80 transition-colors"
+                  >
+                    {showAllCast ? 'Show less' : `Show all ${movie.cast.length} cast members`}
+                  </button>
+                )}
               </div>
             )}
 

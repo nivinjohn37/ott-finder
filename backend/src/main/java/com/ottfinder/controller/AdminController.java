@@ -168,7 +168,6 @@ public class AdminController {
         movieAvailabilityRepository.save(availability);
 
         redisTemplate.delete("ott:availability:" + body.tmdbId());
-        redisTemplate.delete("tmdb:movie:" + body.tmdbId());
         log.info("Admin seeded availability: tmdbId={} on platform={}", body.tmdbId(), body.platformName());
 
         return ResponseEntity.ok(ApiResponse.success(

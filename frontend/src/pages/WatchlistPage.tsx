@@ -1,10 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Bookmark, Clock, LogIn } from 'lucide-react'
+import { useState, useMemo } from 'react'
 import { useWatchlist } from '@/hooks/useWatchlist'
 import { useAuth } from '@/context/AuthContext'
 import { WatchlistCard } from '@/components/watchlist/WatchlistCard'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Link } from 'react-router-dom'
+
+type StatusFilter = 'all' | 'unwatched' | 'watched'
 
 function WatchlistSkeleton() {
   return (
@@ -19,6 +22,25 @@ function WatchlistSkeleton() {
 export function WatchlistPage() {
   const { user, signInWithGoogle } = useAuth()
   const { data, isLoading } = useWatchlist()
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [platformFilter, setPlatformFilter] = useState<string | null>(null)
+
+  const availablePlatforms = useMemo(() => {
+    if (!data) return []
+    const seen = new Map<string, string>()
+    data.forEach((item) => item.movie.platforms.forEach((p) => seen.set(p.platformName, p.displayName)))
+    return [...seen.entries()].map(([name, display]) => ({ name, display }))
+  }, [data])
+
+  const filtered = useMemo(() => {
+    if (!data) return []
+    return data.filter((item) => {
+      if (statusFilter === 'watched' && !item.watchedAt) return false
+      if (statusFilter === 'unwatched' && item.watchedAt) return false
+      if (platformFilter && !item.movie.platforms.some((p) => p.platformName === platformFilter)) return false
+      return true
+    })
+  }, [data, statusFilter, platformFilter])
 
   if (!user) {
     return (
@@ -40,13 +62,13 @@ export function WatchlistPage() {
     )
   }
 
-  const expiring = data?.filter((i) => i.expiringPlatforms.length > 0) ?? []
-  const regular = data?.filter((i) => i.expiringPlatforms.length === 0) ?? []
+  const expiring = filtered.filter((i) => i.expiringPlatforms.length > 0)
+  const regular = filtered.filter((i) => i.expiringPlatforms.length === 0)
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-1 h-8 rounded-full bg-accent" />
           <div>
@@ -56,11 +78,43 @@ export function WatchlistPage() {
             <p className="text-cinema-muted text-sm font-body mt-0.5">
               {data ? `${data.length} item${data.length !== 1 ? 's' : ''}` : '…'}
               {' · '}
-              <span className="text-cinema-muted/60 text-xs">Free tier: up to 3</span>
+              <span className="text-cinema-muted/60 text-xs">Free tier: up to 5</span>
             </p>
           </div>
         </div>
       </div>
+
+      {/* Filter chips */}
+      {data && data.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {(['all', 'unwatched', 'watched'] as StatusFilter[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1 rounded-full text-xs font-body font-medium transition-colors border ${
+                statusFilter === s
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-transparent text-cinema-muted border-cinema-navy-border hover:border-accent/50 hover:text-cinema-text'
+              }`}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+          {availablePlatforms.map((p) => (
+            <button
+              key={p.name}
+              onClick={() => setPlatformFilter(platformFilter === p.name ? null : p.name)}
+              className={`px-3 py-1 rounded-full text-xs font-body font-medium transition-colors border ${
+                platformFilter === p.name
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-transparent text-cinema-muted border-cinema-navy-border hover:border-accent/50 hover:text-cinema-text'
+              }`}
+            >
+              {p.display}
+            </button>
+          ))}
+        </div>
+      )}
 
       {isLoading ? (
         <WatchlistSkeleton />
@@ -78,6 +132,10 @@ export function WatchlistPage() {
             </Link>
           }
         />
+      ) : filtered.length === 0 ? (
+        <p className="text-cinema-muted font-body text-sm text-center py-12">
+          No items match the selected filters.
+        </p>
       ) : (
         <div className="space-y-8">
           {/* Expiring soon section */}
