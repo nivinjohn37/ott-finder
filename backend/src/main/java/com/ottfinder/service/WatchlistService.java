@@ -34,7 +34,7 @@ import java.util.List;
 @Slf4j
 public class WatchlistService {
 
-    private static final int FREE_TIER_LIMIT = 3;
+    private static final int FREE_TIER_LIMIT = 5;
     private static final Duration CACHE_TTL = Duration.ofHours(1);
 
     @Value("${tmdb.image-base-url}")

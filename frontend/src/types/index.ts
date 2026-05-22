@@ -98,6 +98,7 @@ export interface AdminUserDto {
   joinedAt: string | null
   watchlistCount: number
   reviewCount: number
+  blacklisted: boolean
 }
 
 export interface ReviewDto {

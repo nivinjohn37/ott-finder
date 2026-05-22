@@ -9,5 +9,6 @@ public record AdminUserDto(
         String role,
         OffsetDateTime joinedAt,
         long watchlistCount,
-        long reviewCount
+        long reviewCount,
+        boolean blacklisted
 ) {}

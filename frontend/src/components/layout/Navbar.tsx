@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck } from 'lucide-react'
@@ -17,10 +17,20 @@ export function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  const rafRef = useRef<number | null>(null)
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20)
+    const handler = () => {
+      if (rafRef.current !== null) return
+      rafRef.current = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 20)
+        rafRef.current = null
+      })
+    }
     window.addEventListener('scroll', handler, { passive: true })
-    return () => window.removeEventListener('scroll', handler)
+    return () => {
+      window.removeEventListener('scroll', handler)
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    }
   }, [])
 
   useEffect(() => {

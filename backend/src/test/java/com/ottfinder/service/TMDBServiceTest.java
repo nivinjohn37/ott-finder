@@ -40,15 +40,15 @@ class TMDBServiceTest {
     }
 
     @Test
-    void search_cacheMiss_callsTMDBAndReturnsResults() {
+    void search_cacheMiss_callsTMDBAndReturnsResults() throws Exception {
         when(valueOps.get(anyString())).thenReturn(null);
-        when(restTemplate.getForObject(anyString(), eq(Map.class)))
-                .thenReturn(Map.of("results", List.of(
-                        Map.of("id", 693134, "media_type", "movie", "title", "Dune: Part Two",
-                                "overview", "Epic sci-fi", "release_date", "2024-02-27",
-                                "vote_average", 8.2, "vote_count", 5000,
-                                "poster_path", "/poster.jpg")
-                )));
+        byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("results", List.of(
+                Map.of("id", 693134, "media_type", "movie", "title", "Dune: Part Two",
+                        "overview", "Epic sci-fi", "release_date", "2024-02-27",
+                        "vote_average", 8.2, "vote_count", 5000,
+                        "poster_path", "/poster.jpg")
+        )));
+        when(restTemplate.getForObject(anyString(), eq(byte[].class))).thenReturn(body);
 
         List<MovieSearchResult> results = tmdbService.search("Dune");
 
@@ -75,7 +75,7 @@ class TMDBServiceTest {
     @Test
     void search_apiFailure_returnsEmptyList() {
         when(valueOps.get(anyString())).thenReturn(null);
-        when(restTemplate.getForObject(anyString(), eq(Map.class)))
+        when(restTemplate.getForObject(anyString(), eq(byte[].class)))
                 .thenThrow(new RestClientException("connection refused"));
 
         List<MovieSearchResult> results = tmdbService.search("Dune");
@@ -84,14 +84,14 @@ class TMDBServiceTest {
     }
 
     @Test
-    void search_filtersOutPersonResults() {
+    void search_filtersOutPersonResults() throws Exception {
         when(valueOps.get(anyString())).thenReturn(null);
-        when(restTemplate.getForObject(anyString(), eq(Map.class)))
-                .thenReturn(Map.of("results", List.of(
-                        Map.of("id", 1, "media_type", "movie", "title", "A Movie",
-                                "vote_average", 7.0, "vote_count", 100),
-                        Map.of("id", 2, "media_type", "person", "name", "An Actor")
-                )));
+        byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("results", List.of(
+                Map.of("id", 1, "media_type", "movie", "title", "A Movie",
+                        "vote_average", 7.0, "vote_count", 100),
+                Map.of("id", 2, "media_type", "person", "name", "An Actor")
+        )));
+        when(restTemplate.getForObject(anyString(), eq(byte[].class))).thenReturn(body);
 
         List<MovieSearchResult> results = tmdbService.search("test");
 

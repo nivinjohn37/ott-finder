@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navigate } from 'react-router-dom'
-import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database, X, Star } from 'lucide-react'
+import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database, X, Star, Ban, RotateCcw } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers, useSeedAvailability } from '@/hooks/useUser'
+import { useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers, useSeedAvailability, useToggleBlacklist } from '@/hooks/useUser'
 import { searchMovies } from '@/api/movies'
 import type { AdminUserDto, MovieSearchResult } from '@/types'
 
@@ -138,7 +138,7 @@ function UserListModal({ onClose }: { onClose: () => void }) {
             <table className="w-full text-sm font-body">
               <thead className="sticky top-0 bg-cinema-navy border-b border-cinema-navy-border">
                 <tr>
-                  {['User', 'Role', 'Joined', 'Watchlist', 'Reviews'].map(h => (
+                  {['User', 'Role', 'Joined', 'Watchlist', 'Reviews', 'Actions'].map(h => (
                     <th key={h} className="text-left px-6 py-3 text-cinema-muted/60 text-xs font-semibold uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -155,11 +155,13 @@ function UserListModal({ onClose }: { onClose: () => void }) {
 }
 
 function UserRow({ user }: { user: AdminUserDto }) {
+  const { mutate: toggleBlacklist, isPending } = useToggleBlacklist()
+
   return (
-    <tr className="hover:bg-cinema-surface/40 transition-colors">
+    <tr className={`hover:bg-cinema-surface/40 transition-colors ${user.blacklisted ? 'opacity-60' : ''}`}>
       <td className="px-6 py-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full accent-gradient flex items-center justify-center text-white text-xs font-heading font-bold shrink-0">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-heading font-bold shrink-0 ${user.blacklisted ? 'bg-red-500/50' : 'accent-gradient'}`}>
             {(user.displayName ?? user.email).charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -181,6 +183,28 @@ function UserRow({ user }: { user: AdminUserDto }) {
       </td>
       <td className="px-6 py-3 text-cinema-text font-medium">{user.watchlistCount}</td>
       <td className="px-6 py-3 text-cinema-text font-medium">{user.reviewCount}</td>
+      <td className="px-6 py-3">
+        {user.role !== 'admin' && (
+          <button
+            onClick={() => toggleBlacklist(user.id)}
+            disabled={isPending}
+            title={user.blacklisted ? 'Reinstate user' : 'Blacklist user'}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-body font-medium transition-colors disabled:opacity-40 ${
+              user.blacklisted
+                ? 'bg-green-400/15 text-green-400 hover:bg-green-400/25'
+                : 'bg-red-400/15 text-red-400 hover:bg-red-400/25'
+            }`}
+          >
+            {isPending ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : user.blacklisted ? (
+              <><RotateCcw size={12} /> Reinstate</>
+            ) : (
+              <><Ban size={12} /> Blacklist</>
+            )}
+          </button>
+        )}
+      </td>
     </tr>
   )
 }

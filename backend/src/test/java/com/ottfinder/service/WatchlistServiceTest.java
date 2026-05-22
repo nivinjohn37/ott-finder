@@ -68,7 +68,7 @@ class WatchlistServiceTest {
     @Test
     void addToWatchlist_freeTierLimitExceeded_throwsException() {
         when(userRepository.findByFirebaseUid("uid-123")).thenReturn(Optional.of(user));
-        when(watchlistRepository.countByUserId(1L)).thenReturn(3L);
+        when(watchlistRepository.countByUserId(1L)).thenReturn(5L);
 
         assertThatThrownBy(() -> watchlistService.addToWatchlist(principal, 693134, "movie"))
                 .isInstanceOf(WatchlistLimitException.class);

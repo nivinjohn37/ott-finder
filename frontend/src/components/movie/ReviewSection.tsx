@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Star, Trash2, Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useReviews, useUpsertReview, useDeleteReview } from '@/hooks/useReviews'
@@ -15,15 +15,18 @@ export function ReviewSection({ tmdbId }: Props) {
   const { mutateAsync: remove, isPending: deleting } = useDeleteReview(tmdbId)
 
   const [hovered, setHovered] = useState(0)
-  const [selected, setSelected] = useState(data?.myReview?.rating ?? 0)
-  const [note, setNote] = useState(data?.myReview?.note ?? '')
-  const [synced, setSynced] = useState(false)
+  const [selected, setSelected] = useState(0)
+  const [note, setNote] = useState('')
 
-  if (data && !synced) {
-    setSelected(data.myReview?.rating ?? 0)
-    setNote(data.myReview?.note ?? '')
-    setSynced(true)
-  }
+  // Sync form from server whenever myReview changes (initial load, after submit, after delete)
+  // Using rating + note as deps means a background refetch with identical data causes no re-render
+  const serverRating = data?.myReview?.rating ?? 0
+  const serverNote = data?.myReview?.note ?? ''
+  useEffect(() => {
+    setSelected(serverRating)
+    setNote(serverNote)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverRating, serverNote])
 
   async function handleSubmit() {
     if (!selected) return
@@ -32,31 +35,35 @@ export function ReviewSection({ tmdbId }: Props) {
 
   async function handleDelete() {
     await remove()
-    setSelected(0)
-    setNote('')
-    setSynced(false)
   }
 
   return (
     <div className="space-y-6">
-      {/* Aggregate */}
+      {/* Community aggregate */}
       {!isLoading && (data?.totalReviews ?? 0) > 0 && (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star
-                key={s}
-                size={18}
-                className={s <= Math.round(data!.averageRating) ? 'text-yellow-400 fill-yellow-400' : 'text-cinema-muted/30'}
-              />
-            ))}
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-cinema-navy border border-cinema-navy-border w-fit">
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-[10px] font-heading font-bold text-cinema-muted/60 uppercase tracking-wider">Community</span>
+            <div className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  size={15}
+                  className={s <= Math.round(data!.averageRating) ? 'text-yellow-400 fill-yellow-400' : 'text-cinema-muted/20'}
+                />
+              ))}
+            </div>
           </div>
-          <span className="font-heading font-bold text-cinema-text text-lg">
-            {data!.averageRating.toFixed(1)}
-          </span>
-          <span className="text-cinema-muted text-sm font-body">
-            {data!.totalReviews} {data!.totalReviews === 1 ? 'review' : 'reviews'}
-          </span>
+          <div className="w-px h-8 bg-cinema-navy-border" />
+          <div>
+            <span className="font-heading font-bold text-cinema-text text-xl leading-none">
+              {data!.averageRating.toFixed(1)}
+            </span>
+            <span className="text-cinema-muted/50 text-xs font-body ml-0.5">/5</span>
+            <p className="text-cinema-muted/60 text-xs font-body mt-0.5">
+              {data!.totalReviews} {data!.totalReviews === 1 ? 'rating' : 'ratings'}
+            </p>
+          </div>
         </div>
       )}
 

@@ -41,6 +41,10 @@ public class User {
     @Builder.Default
     private String role = "user";
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean blacklisted = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;

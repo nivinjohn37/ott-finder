@@ -24,6 +24,7 @@ export function MovieDetailPage() {
   const isInWatchlist = useIsInWatchlist(Number(tmdbId))
   const { mutateAsync: add } = useAddToWatchlist()
   const [adding, setAdding] = useState(false)
+  const [watchlistError, setWatchlistError] = useState<string | null>(null)
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [shared, setShared] = useState(false)
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null)
@@ -51,8 +52,18 @@ export function MovieDetailPage() {
     if (!user) { signInWithGoogle(); return }
     if (isInWatchlist || !movie || adding) return
     setAdding(true)
-    try { await add({ movieId: movie.tmdbId, mediaType: movie.mediaType }) }
-    finally { setAdding(false) }
+    setWatchlistError(null)
+    try {
+      await add({ movieId: movie.tmdbId, mediaType: movie.mediaType })
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: { code?: string } } } })
+        ?.response?.data?.error?.code
+      if (code === 'WATCHLIST_LIMIT_EXCEEDED') {
+        setWatchlistError("You've reached the 5-item watchlist limit. Remove a title to add more.")
+      }
+    } finally {
+      setAdding(false)
+    }
   }
 
   if (isLoading) return <DetailSkeleton />
@@ -114,9 +125,15 @@ export function MovieDetailPage() {
             {/* Badges row */}
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {movie.voteAverage > 0 && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rating/15 text-rating text-sm font-body font-semibold">
-                  <Star size={13} fill="currentColor" /> {movie.voteAverage.toFixed(1)}
-                  <span className="text-cinema-muted font-normal text-xs ml-0.5">({movie.voteCount?.toLocaleString()})</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#01b4e4]/15 border border-[#01b4e4]/25 text-sm font-body font-semibold text-[#01b4e4]">
+                  <span className="text-[10px] font-heading font-bold tracking-wide">TMDb</span>
+                  <span className="w-px h-3 bg-[#01b4e4]/30" />
+                  <Star size={12} fill="currentColor" />
+                  {movie.voteAverage.toFixed(1)}
+                  <span className="text-[#01b4e4]/60 font-normal text-xs">/10</span>
+                  {movie.voteCount && movie.voteCount > 0 && (
+                    <span className="text-cinema-muted font-normal text-xs">({movie.voteCount.toLocaleString()})</span>
+                  )}
                 </span>
               )}
               {movie.releaseDate && (
@@ -232,6 +249,12 @@ export function MovieDetailPage() {
                 {shared ? <><Check size={16} className="text-green-400" /> Copied!</> : <><Share2 size={16} /> Share</>}
               </button>
             </div>
+
+            {watchlistError && (
+              <p className="text-sm font-body text-amber-400 flex items-center gap-1.5 -mt-1">
+                <span>⚠</span> {watchlistError}
+              </p>
+            )}
 
             {/* Cast */}
             {movie.cast && movie.cast.length > 0 && (

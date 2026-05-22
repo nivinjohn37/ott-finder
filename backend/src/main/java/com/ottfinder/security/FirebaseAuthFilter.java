@@ -7,8 +7,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,8 +22,11 @@ import java.util.List;
 
 @Component
 @ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
+@RequiredArgsConstructor
 @Slf4j
 public class FirebaseAuthFilter extends OncePerRequestFilter {
+
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -33,6 +38,13 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
             try {
                 FirebaseToken decoded = FirebaseAuth.getInstance().verifyIdToken(token);
+
+                // Reject blacklisted users immediately via Redis fast-path
+                if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + decoded.getUid()))) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account suspended");
+                    return;
+                }
+
                 FirebasePrincipal principal = new FirebasePrincipal(
                         decoded.getUid(),
                         decoded.getEmail(),

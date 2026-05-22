@@ -1,5 +1,8 @@
 package com.ottfinder.controller;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import com.ottfinder.dto.response.AdminStats;
 import com.ottfinder.dto.response.AdminUserDto;
 import com.ottfinder.dto.response.ApiResponse;
@@ -7,6 +10,7 @@ import com.ottfinder.dto.response.OttAvailability;
 import com.ottfinder.entity.Movie;
 import com.ottfinder.entity.MovieAvailability;
 import com.ottfinder.entity.OttPlatform;
+import com.ottfinder.entity.User;
 import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.OttPlatformRepository;
@@ -19,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
@@ -76,7 +81,8 @@ public class AdminController {
                         u.getRole(),
                         u.getCreatedAt(),
                         watchlistRepository.countByUserId(u.getId()),
-                        reviewRepository.countByUserId(u.getId())
+                        reviewRepository.countByUserId(u.getId()),
+                        u.isBlacklisted()
                 ))
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(users));
@@ -167,5 +173,53 @@ public class AdminController {
 
         return ResponseEntity.ok(ApiResponse.success(
                 movie.getTitle() + " added to " + platform.getDisplayName()));
+    }
+
+    @PatchMapping("/users/{id}/blacklist")
+    @Transactional
+    public ResponseEntity<ApiResponse<String>> toggleBlacklist(
+            @AuthenticationPrincipal FirebasePrincipal principal,
+            @PathVariable Long id) {
+
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        User target = userRepository.findById(id).orElse(null);
+        if (target == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("NOT_FOUND", "User not found"));
+        }
+        if ("admin".equals(target.getRole())) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.error("VALIDATION_ERROR", "Cannot blacklist an admin account"));
+        }
+
+        target.setBlacklisted(!target.isBlacklisted());
+        userRepository.save(target);
+
+        // Disable/enable account in Firebase and revoke tokens when blacklisting
+        try {
+            FirebaseAuth.getInstance().updateUser(
+                    new UserRecord.UpdateRequest(target.getFirebaseUid())
+                            .setDisabled(target.isBlacklisted()));
+            if (target.isBlacklisted()) {
+                FirebaseAuth.getInstance().revokeRefreshTokens(target.getFirebaseUid());
+            }
+        } catch (FirebaseAuthException ex) {
+            log.warn("Firebase status update failed for uid={}: {}", target.getFirebaseUid(), ex.getMessage());
+        }
+
+        // Keep a fast-lookup key in Redis so the auth filter can reject existing tokens immediately
+        String blacklistKey = "blacklist:" + target.getFirebaseUid();
+        if (target.isBlacklisted()) {
+            redisTemplate.opsForValue().set(blacklistKey, "1");
+        } else {
+            redisTemplate.delete(blacklistKey);
+        }
+
+        log.info("Admin {} {} user id={}", principal.uid(),
+                target.isBlacklisted() ? "blacklisted" : "reinstated", id);
+        return ResponseEntity.ok(ApiResponse.success(
+                target.isBlacklisted() ? "User blacklisted" : "User reinstated"));
     }
 }

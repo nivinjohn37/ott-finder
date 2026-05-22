@@ -38,6 +38,11 @@ export async function getAdminPlatforms(): Promise<{ name: string; displayName: 
   return (res.data.data ?? []).map(p => ({ name: p.platformName, displayName: p.displayName }))
 }
 
+export async function toggleBlacklist(userId: number): Promise<string> {
+  const res = await api.patch<ApiResponse<string>>(`/admin/users/${userId}/blacklist`)
+  return res.data.data ?? ''
+}
+
 export async function seedAvailability(body: {
   tmdbId: number
   mediaType: string

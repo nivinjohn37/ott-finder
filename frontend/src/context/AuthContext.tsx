@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   type User,
@@ -24,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Process any pending redirect result (needed when running as a PWA/standalone app)
+    getRedirectResult(auth).catch(() => {})
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u)
       setLoading(false)
@@ -33,7 +37,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signInWithGoogle() {
     const provider = new GoogleAuthProvider()
-    await signInWithPopup(auth, provider)
+    // Force account chooser so switching accounts works reliably
+    provider.setCustomParameters({ prompt: 'select_account' })
+    try {
+      // PWA / homescreen shortcut: popup can't complete in a detached WebView,
+      // so use redirect-based flow which stays in the same context
+      const isPwa = window.matchMedia('(display-mode: standalone)').matches ||
+                    (window.navigator as unknown as { standalone?: boolean }).standalone === true
+      if (isPwa) {
+        await signInWithRedirect(auth, provider)
+      } else {
+        await signInWithPopup(auth, provider)
+      }
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code
+      if (code === 'auth/user-disabled') {
+        alert('Your account has been suspended. Please contact support.')
+      }
+    }
   }
 
   async function logout() {

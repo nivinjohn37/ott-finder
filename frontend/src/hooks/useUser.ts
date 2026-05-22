@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getAdminPlatforms, getAdminStats, getAdminUsers, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability } from '@/api/user'
+import { getAdminPlatforms, getAdminStats, getAdminUsers, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
 import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
@@ -42,6 +42,17 @@ export function useSeedAvailability() {
   return useMutation({
     mutationFn: seedAvailability,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
+  })
+}
+
+export function useToggleBlacklist() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: number) => toggleBlacklist(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
   })
