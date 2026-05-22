@@ -37,9 +37,9 @@ public class ReviewController {
             @AuthenticationPrincipal FirebasePrincipal principal) {
 
         List<Review> reviews = reviewRepository.findByMovieTmdbId(tmdbId);
-        Object[] agg = reviewRepository.getAggregateByMovieTmdbId(tmdbId);
-        long count = ((Number) agg[0]).longValue();
-        double avg = ((Number) agg[1]).doubleValue();
+        List<Object[]> agg = reviewRepository.getAggregateByMovieTmdbId(tmdbId);
+        long count = agg.isEmpty() ? 0L : ((Number) agg.get(0)[0]).longValue();
+        double avg = agg.isEmpty() ? 0.0 : ((Number) agg.get(0)[1]).doubleValue();
 
         String currentUid = principal != null ? principal.uid() : null;
         List<ReviewDto> dtos = reviews.stream()
