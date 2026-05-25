@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { deleteAvailability, getAdminPlatforms, getAdminStats, getAdminUsers, getMovieAvailability, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
+import { deleteAvailability, getAdminPlatforms, getAdminStats, getAdminUsers, getMovieAvailability, getUserBadges, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
 import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
@@ -74,6 +74,16 @@ export function useToggleBlacklist() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
+  })
+}
+
+export function useUserBadges() {
+  const { user } = useAuth()
+  return useQuery({
+    queryKey: ['user', 'badges'],
+    queryFn: getUserBadges,
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user,
   })
 }
 

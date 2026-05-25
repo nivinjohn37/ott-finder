@@ -37,21 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signInWithGoogle() {
     const provider = new GoogleAuthProvider()
-    // Force account chooser so switching accounts works reliably
     provider.setCustomParameters({ prompt: 'select_account' })
     try {
-      // PWA / homescreen shortcut: popup can't complete in a detached WebView,
-      // so use redirect-based flow which stays in the same context
-      const isPwa = window.matchMedia('(display-mode: standalone)').matches ||
-                    (window.navigator as unknown as { standalone?: boolean }).standalone === true
-      if (isPwa) {
-        await signInWithRedirect(auth, provider)
-      } else {
-        await signInWithPopup(auth, provider)
-      }
+      await signInWithPopup(auth, provider)
     } catch (err: unknown) {
       const code = (err as { code?: string }).code
-      if (code === 'auth/user-disabled') {
+      if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request') {
+        // Popup was blocked (rare on mobile) — fall back to redirect
+        await signInWithRedirect(auth, provider)
+      } else if (code === 'auth/user-disabled') {
         alert('Your account has been suspended. Please contact support.')
       }
     }

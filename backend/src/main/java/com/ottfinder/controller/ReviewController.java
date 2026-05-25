@@ -10,6 +10,7 @@ import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.ReviewRepository;
 import com.ottfinder.repository.UserRepository;
 import com.ottfinder.security.FirebasePrincipal;
+import com.ottfinder.service.BadgeCheckEvent;
 import com.ottfinder.service.MovieSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ public class ReviewController {
     private final UserRepository userRepository;
     private final MovieRepository movieRepository;
     private final MovieSearchService movieSearchService;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public record ReviewRequest(int rating, String note) {}
 
@@ -103,6 +105,7 @@ public class ReviewController {
                         .build());
 
         reviewRepository.save(review);
+        eventPublisher.publishEvent(new BadgeCheckEvent(user.getId()));
         return ResponseEntity.ok(ApiResponse.success(toDto(review, principal.uid())));
     }
 

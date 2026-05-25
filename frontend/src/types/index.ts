@@ -119,6 +119,11 @@ export interface ReviewsResponse {
   hasMore: boolean
 }
 
+export interface BadgeDto {
+  badgeType: string
+  earnedAt: string
+}
+
 export type MediaType = 'movie' | 'tv'
 
 export const PLATFORM_COLORS: Record<string, string> = {

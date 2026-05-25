@@ -93,7 +93,7 @@ _Last updated: 2026-05-23_
 
 | ID | Priority | Description |
 |----|----------|-------------|
-| F-01 | High | **Gamification badges** — "First Review", "10 Movies Watched", "Watchlist Collector". Awarded server-side on qualifying action, displayed on profile page |
+| F-01 | done | **Gamification badges** — "First Review", "10 Movies Watched", "Watchlist Collector". Awarded server-side on qualifying action, displayed on profile page | Fixed 2026-05-25: V15 migration; BadgeService with REQUIRES_NEW tx; wired into ReviewController + WatchlistService; GET /api/user/badges; Achievements section on ProfilePage with locked/earned states |
 
 ---
 
@@ -195,6 +195,48 @@ Core idea: derive non-obvious signals from the review/watchlist data already col
 
 ---
 
+### Phase 3e — Community Sentiment *(AI-powered outside-world reviews)*
+
+Core idea: aggregate TMDB reviews + Reddit community discussion per movie, run AI summarisation, surface sentiment + key opinions with a spoiler toggle on the movie detail page.
+
+| ID | Priority | Description |
+|----|----------|-------------|
+| F-38 | High | **ReviewAggregatorService** — fetches TMDB `/movie/{id}/reviews` (official, free) + searches Reddit API for movie discussion threads (`r/movies`, `r/television`); merges raw text corpus per tmdbId |
+| F-39 | High | **AI summarisation job** — sends corpus to Claude/OpenAI; structured output: overall sentiment (Loved/Mixed/Divisive), 3–4 spoiler-free bullet points, 2–3 spoiler-tagged insights. Result cached in Redis key `sentiment:{tmdbId}` TTL 24h |
+| F-40 | High | **Spoiler filter UX** — Community Sentiment panel on movie detail page: sentiment pill, bullet list, source chips ("TMDB Reviews · Reddit"). Spoiler section hidden behind blur overlay + "Show spoilers" confirm button |
+| F-41 | Medium | **Scheduled refresh** — nightly `@Scheduled` job refreshes sentiment cache for all movies in any watchlist or recently viewed, so detail page loads feel instant |
+| F-42 | Low | **Kafka upgrade path** — replace `@Async` aggregation with a Kafka topic (`sentiment.refresh.requested`) when concurrent users reach thousands; Spring Kafka consumer triggers the AI job. Note in design doc now; implement later. |
+
+**Backend additions needed:**
+- `ReviewAggregatorService` — TMDB reviews fetch + Reddit OAuth2 API search (100 req/min free tier)
+- `SentimentService` — Claude/OpenAI chat completion call, parses structured JSON response
+- `SentimentCacheScheduler` — nightly refresh for active movies
+- `GET /api/movies/{tmdbId}/sentiment` — returns cached summary; triggers async generation on cache miss
+- New Redis keys: `sentiment:{tmdbId}` (TTL 24h)
+
+**Data sources chosen:**
+- ✅ TMDB `/movie/{id}/reviews` — official, free, already integrated
+- ✅ Reddit API — OAuth2 app, free tier sufficient for portfolio scale
+- ❌ Google Reviews — no public API, blocked scraping
+- ❌ IMDb/Letterboxd — no official API, ToS violation
+
+---
+
+### Phase 3f — AI Reel Share *(import movie names from shared social reels)*
+
+Core idea: user shares a reel/video from Instagram/YouTube to the app via the mobile share sheet; app extracts movie names from the content and offers to add them to the watchlist.
+
+| ID | Priority | Description |
+|----|----------|-------------|
+| F-34 | High | **Web Share Target** — add `share_target` to PWA manifest; app receives shared URL/title/text from mobile share sheet via `POST /share-target` |
+| F-35 | High | **Text extraction** — parse shared URL/title/text for movie names using regex + Claude API; fastest path, covers most "Top 10 movies" style posts |
+| F-36 | High | **YouTube transcript fallback** — if shared URL is a YouTube link, fetch transcript via `youtube-transcript` npm package; send transcript to Claude to extract movie names |
+| F-37 | Medium | **Audio scan fallback** — if transcript unavailable, download audio via yt-dlp, transcribe with OpenAI Whisper, extract names from transcript. Heaviest path; runs server-side as async job |
+
+**Flow:** Share sheet → `/share-target` → text extraction (fast) → YouTube transcript (medium) → Whisper audio (slow, async) → return extracted movie list → user confirms → bulk add to watchlist
+
+---
+
 ### Phase 4 — Platform Expansion
 
 | ID | Priority | Description |
@@ -214,3 +256,4 @@ Core idea: derive non-obvious signals from the review/watchlist data already col
 - Redis cache key reference: see `ARCHITECTURE.md`
 - All new endpoints must follow `ApiResponse<T>` envelope
 - Phase 2.5 is the highest-interview-value phase — multi-user data, invite flows, leaderboard aggregation are rare in portfolio projects
+- Phase 3e sentiment key: `sentiment:{tmdbId}` TTL 24h — see Phase 3d for other insight keys

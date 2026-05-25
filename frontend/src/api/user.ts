@@ -1,4 +1,4 @@
-import type { AdminStats, AdminUserDto, ApiResponse, UserMe, UserPreferences, UserStats } from '@/types'
+import type { AdminStats, AdminUserDto, ApiResponse, BadgeDto, UserMe, UserPreferences, UserStats } from '@/types'
 import api from './axios'
 
 export async function getUserMe(): Promise<UserMe> {
@@ -69,4 +69,9 @@ export async function getMovieAvailability(tmdbId: number): Promise<Availability
 
 export async function deleteAvailability(id: number): Promise<void> {
   await api.delete(`/admin/availability/${id}`)
+}
+
+export async function getUserBadges(): Promise<BadgeDto[]> {
+  const res = await api.get<ApiResponse<BadgeDto[]>>('/user/badges')
+  return res.data.data ?? []
 }

@@ -9,7 +9,8 @@ import api from '@/api/axios'
 import type { ApiResponse } from '@/types'
 import { useAuth } from '@/context/AuthContext'
 import { useWatchlist } from '@/hooks/useWatchlist'
-import { useUserStats, useUserPreferences, useSavePreferences } from '@/hooks/useUser'
+import { useUserBadges, useUserStats, useUserPreferences, useSavePreferences } from '@/hooks/useUser'
+import type { BadgeDto } from '@/types'
 
 const MAX_SIZE_MB = 2
 
@@ -34,6 +35,7 @@ export function ProfilePage() {
   const { user, refreshUser } = useAuth()
   const { data: watchlist, isLoading } = useWatchlist()
   const { data: stats } = useUserStats()
+  const { data: badges = [] } = useUserBadges()
   const { data: preferences } = useUserPreferences()
   const { mutateAsync: savePreferences, isPending: savingPrefs } = useSavePreferences()
 
@@ -300,6 +302,25 @@ export function ProfilePage() {
         </motion.div>
       )}
 
+      {/* Badges */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="mb-8"
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1 h-5 rounded-full bg-accent" />
+          <h2 className="font-heading font-semibold text-cinema-text text-base">Achievements</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {BADGE_META.map((meta) => {
+            const earned = badges.find((b) => b.badgeType === meta.type)
+            return <BadgeCard key={meta.type} meta={meta} badge={earned ?? null} />
+          })}
+        </div>
+      </motion.div>
+
       {/* Preferences */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -377,6 +398,44 @@ export function ProfilePage() {
           </button>
         </div>
       </motion.div>
+    </div>
+  )
+}
+
+interface BadgeMeta {
+  type: string
+  label: string
+  description: string
+  icon: string
+}
+
+const BADGE_META: BadgeMeta[] = [
+  { type: 'FIRST_REVIEW', label: 'First Review', description: 'Shared your first movie review', icon: '⭐' },
+  { type: 'WATCHED_10', label: 'Movie Marathon', description: 'Marked 10 movies as watched', icon: '🎬' },
+  { type: 'WATCHLIST_COLLECTOR', label: 'Collector', description: 'Added 5 movies to your watchlist', icon: '📚' },
+]
+
+function BadgeCard({ meta, badge }: { meta: BadgeMeta; badge: BadgeDto | null }) {
+  const earned = badge !== null
+  return (
+    <div className={`rounded-xl border p-4 flex flex-col items-center text-center gap-2 transition-all ${
+      earned
+        ? 'border-accent/40 bg-accent/5'
+        : 'border-cinema-navy-border bg-cinema-navy opacity-50 grayscale'
+    }`}>
+      <span className="text-3xl">{meta.icon}</span>
+      <div>
+        <p className="font-heading font-bold text-cinema-text text-sm">{meta.label}</p>
+        <p className="text-cinema-muted/60 text-xs font-body mt-0.5">{meta.description}</p>
+      </div>
+      {earned && badge && (
+        <p className="text-accent text-xs font-body font-medium">
+          Earned {new Date(badge.earnedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </p>
+      )}
+      {!earned && (
+        <p className="text-cinema-muted/40 text-xs font-body">Locked</p>
+      )}
     </div>
   )
 }

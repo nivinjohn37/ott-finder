@@ -47,6 +47,7 @@ public class WatchlistService {
     private final TMDBService tmdbService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<WatchlistItem> getWatchlist(FirebasePrincipal principal) {
@@ -90,6 +91,7 @@ public class WatchlistService {
         );
 
         invalidateCache(user.getId());
+        eventPublisher.publishEvent(new BadgeCheckEvent(user.getId()));
         return toWatchlistItem(entry);
     }
 
@@ -113,6 +115,7 @@ public class WatchlistService {
         entry.setWatchedAt(entry.getWatchedAt() == null ? OffsetDateTime.now() : null);
         watchlistRepository.save(entry);
         invalidateCache(user.getId());
+        eventPublisher.publishEvent(new BadgeCheckEvent(user.getId()));
         return toWatchlistItem(entry);
     }
 

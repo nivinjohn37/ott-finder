@@ -1,12 +1,14 @@
 package com.ottfinder.controller;
 
 import com.ottfinder.dto.response.ApiResponse;
+import com.ottfinder.dto.response.BadgeDto;
 import com.ottfinder.dto.response.UserMe;
 import com.ottfinder.dto.response.UserPreferencesDto;
 import com.ottfinder.dto.response.UserStats;
 import com.ottfinder.entity.User;
 import com.ottfinder.entity.UserPreference;
 import com.ottfinder.entity.Watchlist;
+import com.ottfinder.repository.UserBadgeRepository;
 import com.ottfinder.repository.UserPreferenceRepository;
 import com.ottfinder.repository.UserRepository;
 import com.ottfinder.repository.WatchlistRepository;
@@ -36,6 +38,7 @@ public class UserController {
     private final UserRepository userRepository;
     private final WatchlistRepository watchlistRepository;
     private final UserPreferenceRepository userPreferenceRepository;
+    private final UserBadgeRepository userBadgeRepository;
 
     @GetMapping("/me")
     @Transactional
@@ -80,6 +83,21 @@ public class UserController {
                 .orElse(null);
 
         return ResponseEntity.ok(ApiResponse.success(new UserStats(favouriteGenre, total, watched)));
+    }
+
+    @GetMapping("/badges")
+    public ResponseEntity<ApiResponse<List<BadgeDto>>> getBadges(
+            @AuthenticationPrincipal FirebasePrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body(ApiResponse.error("UNAUTHORIZED", "Authentication required"));
+        }
+        User user = userRepository.findByFirebaseUid(principal.uid()).orElse(null);
+        if (user == null) return ResponseEntity.ok(ApiResponse.success(List.of()));
+
+        List<BadgeDto> badges = userBadgeRepository.findByUserId(user.getId()).stream()
+                .map(b -> new BadgeDto(b.getBadgeType(), b.getEarnedAt()))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(badges));
     }
 
     @GetMapping("/preferences")
