@@ -116,6 +116,7 @@ export interface ReviewsResponse {
   averageRating: number
   myReview: ReviewDto | null
   reviews: ReviewDto[]
+  hasMore: boolean
 }
 
 export type MediaType = 'movie' | 'tv'

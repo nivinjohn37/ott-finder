@@ -128,17 +128,18 @@ public class TMDBService {
         return results;
     }
 
-    public List<MovieSearchResult> getGenreMovies(String genreName) {
+    public List<MovieSearchResult> getGenreMovies(String genreName, String mediaType) {
         Integer genreId = GENRE_IDS.get(genreName);
         if (genreId == null) return Collections.emptyList();
 
-        String cacheKey = "tmdb:genre:" + genreId;
+        String resolvedType = "tv".equals(mediaType) ? "tv" : "movie";
+        String cacheKey = "tmdb:genre:" + genreId + ":" + resolvedType;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             return deserializeList(cached, new TypeReference<>() {});
         }
 
-        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/discover/movie")
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/discover/" + resolvedType)
                 .queryParam("api_key", apiKey)
                 .queryParam("language", "en-US")
                 .queryParam("with_genres", genreId)

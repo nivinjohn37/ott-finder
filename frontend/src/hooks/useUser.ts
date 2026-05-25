@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { getAdminPlatforms, getAdminStats, getAdminUsers, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
+import { deleteAvailability, getAdminPlatforms, getAdminStats, getAdminUsers, getMovieAvailability, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
 import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
@@ -41,8 +41,27 @@ export function useSeedAvailability() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: seedAvailability,
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'availability', variables.tmdbId] })
+    },
+  })
+}
+
+export function useMovieAvailability(tmdbId: number | null) {
+  return useQuery({
+    queryKey: ['admin', 'availability', tmdbId],
+    queryFn: () => getMovieAvailability(tmdbId!),
+    enabled: tmdbId !== null,
+  })
+}
+
+export function useDeleteAvailability() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteAvailability,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'availability'] })
     },
   })
 }

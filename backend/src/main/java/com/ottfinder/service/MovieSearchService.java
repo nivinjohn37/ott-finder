@@ -110,8 +110,8 @@ public class MovieSearchService {
         return tmdbService.getPersonFilmography(personId);
     }
 
-    public List<MovieSearchResult> getGenreMovies(String genreName) {
-        return tmdbService.getGenreMovies(genreName);
+    public List<MovieSearchResult> getGenreMovies(String genreName, String mediaType) {
+        return tmdbService.getGenreMovies(genreName, mediaType);
     }
 
     public List<MovieSearchResult> getTrending() {

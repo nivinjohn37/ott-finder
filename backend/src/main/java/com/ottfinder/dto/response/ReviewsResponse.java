@@ -6,5 +6,6 @@ public record ReviewsResponse(
         long totalReviews,
         double averageRating,
         ReviewDto myReview,
-        List<ReviewDto> reviews
+        List<ReviewDto> reviews,
+        boolean hasMore
 ) {}

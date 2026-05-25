@@ -81,6 +81,10 @@ public class WatchlistService {
         Movie movie = movieRepository.findByTmdbId(tmdbId)
                 .orElseGet(() -> fetchAndSaveMovie(tmdbId, mediaType));
 
+        if (movie.getGenres() == null) {
+            backfillGenres(movie, mediaType);
+        }
+
         Watchlist entry = watchlistRepository.save(
                 Watchlist.builder().user(user).movie(movie).build()
         );
@@ -135,6 +139,21 @@ public class WatchlistService {
                         .build()));
     }
 
+    private void backfillGenres(Movie movie, String mediaType) {
+        try {
+            String resolvedType = "tv".equals(mediaType) ? "tv" : "movie";
+            var detail = tmdbService.getDetails(movie.getTmdbId(), resolvedType);
+            if (detail == null) detail = tmdbService.getDetails(movie.getTmdbId(),
+                    "tv".equals(resolvedType) ? "movie" : "tv");
+            if (detail != null && detail.genres() != null && !detail.genres().isEmpty()) {
+                movie.setGenres(String.join(",", detail.genres()));
+                movieRepository.save(movie);
+            }
+        } catch (Exception ex) {
+            log.warn("Genre backfill failed for tmdbId={}: {}", movie.getTmdbId(), ex.getMessage());
+        }
+    }
+
     private Movie fetchAndSaveMovie(Integer tmdbId, String mediaType) {
         String resolvedType = "tv".equals(mediaType) ? "tv" : "movie";
         var detail = tmdbService.getDetails(tmdbId, resolvedType);
@@ -156,6 +175,8 @@ public class WatchlistService {
                 .voteAverage(d.voteAverage() != null ? BigDecimal.valueOf(d.voteAverage()) : null)
                 .voteCount(d.voteCount())
                 .mediaType(type)
+                .genres(d.genres() != null && !d.genres().isEmpty()
+                        ? String.join(",", d.genres()) : null)
                 .build());
     }
 

@@ -8,11 +8,12 @@ const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg
 
 interface Props {
   genreName: string
+  mediaType?: string
   onClose: () => void
 }
 
-export function GenreDrawer({ genreName, onClose }: Props) {
-  const { data: movies = [], isLoading } = useGenreMovies(genreName)
+export function GenreDrawer({ genreName, mediaType = 'movie', onClose }: Props) {
+  const { data: movies = [], isLoading } = useGenreMovies(genreName, mediaType)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -42,7 +43,7 @@ export function GenreDrawer({ genreName, onClose }: Props) {
             <h2 className="font-heading font-semibold text-cinema-text text-base">{genreName}</h2>
             {!isLoading && (
               <p className="text-cinema-muted/60 text-xs font-body mt-0.5">
-                Top {movies.length} popular titles
+                Top {movies.length} popular {mediaType === 'tv' ? 'TV shows' : 'movies'}
               </p>
             )}
           </div>

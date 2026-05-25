@@ -25,9 +25,9 @@ export async function getPersonFilmography(personId: number): Promise<PersonFilm
   return res.data.data
 }
 
-export async function getGenreMovies(genreName: string): Promise<MovieSearchResult[]> {
+export async function getGenreMovies(genreName: string, mediaType = 'movie'): Promise<MovieSearchResult[]> {
   const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/genre', {
-    params: { name: genreName },
+    params: { name: genreName, mediaType },
   })
   return res.data.data ?? []
 }

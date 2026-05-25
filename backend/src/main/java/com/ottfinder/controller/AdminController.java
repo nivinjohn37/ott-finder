@@ -174,6 +174,54 @@ public class AdminController {
                 movie.getTitle() + " added to " + platform.getDisplayName()));
     }
 
+    public record AvailabilityEntry(Long id, String platformName, String displayName, String deepLink, String availableUntil) {}
+
+    @GetMapping("/availability/movie/{tmdbId}")
+    public ResponseEntity<ApiResponse<List<AvailabilityEntry>>> getMovieAvailability(
+            @AuthenticationPrincipal FirebasePrincipal principal,
+            @PathVariable Integer tmdbId) {
+
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        List<AvailabilityEntry> entries = movieAvailabilityRepository
+                .findByMovieTmdbId(tmdbId)
+                .stream()
+                .map(ma -> new AvailabilityEntry(
+                        ma.getId(),
+                        ma.getPlatform().getName(),
+                        ma.getPlatform().getDisplayName(),
+                        ma.getDeepLink(),
+                        ma.getAvailableUntil() != null ? ma.getAvailableUntil().toString() : null))
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(entries));
+    }
+
+    @DeleteMapping("/availability/{id}")
+    @Transactional
+    public ResponseEntity<ApiResponse<Void>> deleteAvailability(
+            @AuthenticationPrincipal FirebasePrincipal principal,
+            @PathVariable Long id) {
+
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        MovieAvailability entry = movieAvailabilityRepository.findById(id).orElse(null);
+        if (entry == null) {
+            return ResponseEntity.status(404).body(ApiResponse.error("NOT_FOUND", "Availability entry not found"));
+        }
+
+        Integer tmdbId = entry.getMovie().getTmdbId();
+        movieAvailabilityRepository.delete(entry);
+        redisTemplate.delete("ott:availability:" + tmdbId);
+        log.info("Admin deleted availability id={} for tmdbId={}", id, tmdbId);
+
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @PatchMapping("/users/{id}/blacklist")
     @Transactional
     public ResponseEntity<ApiResponse<String>> toggleBlacklist(

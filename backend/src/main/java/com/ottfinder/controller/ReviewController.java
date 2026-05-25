@@ -17,6 +17,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
 import java.util.List;
 
 @RestController
@@ -31,24 +34,32 @@ public class ReviewController {
 
     public record ReviewRequest(int rating, String note) {}
 
+    private static final int PAGE_SIZE = 10;
+
     @GetMapping
     public ResponseEntity<ApiResponse<ReviewsResponse>> getReviews(
             @PathVariable Integer tmdbId,
-            @AuthenticationPrincipal FirebasePrincipal principal) {
+            @AuthenticationPrincipal FirebasePrincipal principal,
+            @RequestParam(defaultValue = "0") int page) {
 
-        List<Review> reviews = reviewRepository.findByMovieTmdbId(tmdbId);
+        Page<Review> reviewPage = reviewRepository.findByMovieTmdbIdPaged(
+                tmdbId, PageRequest.of(page, PAGE_SIZE));
+
         List<Object[]> agg = reviewRepository.getAggregateByMovieTmdbId(tmdbId);
         long count = agg.isEmpty() ? 0L : ((Number) agg.get(0)[0]).longValue();
         double avg = agg.isEmpty() ? 0.0 : ((Number) agg.get(0)[1]).doubleValue();
 
         String currentUid = principal != null ? principal.uid() : null;
-        List<ReviewDto> dtos = reviews.stream()
+        List<ReviewDto> dtos = reviewPage.getContent().stream()
                 .map(r -> toDto(r, currentUid))
                 .toList();
 
-        ReviewDto myReview = dtos.stream().filter(ReviewDto::isOwn).findFirst().orElse(null);
+        ReviewDto myReview = page == 0
+                ? dtos.stream().filter(ReviewDto::isOwn).findFirst().orElse(null)
+                : null;
 
-        return ResponseEntity.ok(ApiResponse.success(new ReviewsResponse(count, avg, myReview, dtos)));
+        return ResponseEntity.ok(ApiResponse.success(
+                new ReviewsResponse(count, avg, myReview, dtos, !reviewPage.isLast())));
     }
 
     @PostMapping

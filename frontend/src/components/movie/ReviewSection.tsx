@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Star, Trash2, Loader2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useReviews, useUpsertReview, useDeleteReview } from '@/hooks/useReviews'
+import { getReviews } from '@/api/reviews'
 import type { ReviewDto } from '@/types'
 
 interface Props {
@@ -17,6 +18,10 @@ export function ReviewSection({ tmdbId }: Props) {
   const [hovered, setHovered] = useState(0)
   const [selected, setSelected] = useState(0)
   const [note, setNote] = useState('')
+  const [extraReviews, setExtraReviews] = useState<ReviewDto[]>([])
+  const [nextPage, setNextPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
 
   // Sync form from server whenever myReview changes (initial load, after submit, after delete)
   // Using rating + note as deps means a background refetch with identical data causes no re-render
@@ -27,6 +32,24 @@ export function ReviewSection({ tmdbId }: Props) {
     setNote(serverNote)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverRating, serverNote])
+
+  useEffect(() => {
+    setHasMore(data?.hasMore ?? false)
+    setExtraReviews([])
+    setNextPage(1)
+  }, [data?.hasMore, tmdbId])
+
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const result = await getReviews(tmdbId, nextPage)
+      setExtraReviews((prev) => [...prev, ...result.reviews])
+      setHasMore(result.hasMore)
+      setNextPage((p) => p + 1)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   async function handleSubmit() {
     if (!selected) return
@@ -141,9 +164,18 @@ export function ReviewSection({ tmdbId }: Props) {
       {/* Review list */}
       {(data?.reviews ?? []).length > 0 && (
         <div className="space-y-3">
-          {data!.reviews.map((r) => (
+          {[...(data!.reviews), ...extraReviews].map((r) => (
             <ReviewCard key={r.id} review={r} />
           ))}
+          {hasMore && (
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="w-full py-2.5 rounded-lg border border-cinema-navy-border text-cinema-muted hover:text-cinema-text font-body text-sm transition-colors flex items-center justify-center gap-2"
+            >
+              {loadingMore ? <><Loader2 size={14} className="animate-spin" /> Loading…</> : 'Load more reviews'}
+            </button>
+          )}
         </div>
       )}
 

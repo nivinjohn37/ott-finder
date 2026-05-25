@@ -346,6 +346,7 @@ export function MovieDetailPage() {
         {selectedGenre !== null && (
           <GenreDrawer
             genreName={selectedGenre}
+            mediaType={movie?.mediaType}
             onClose={() => setSelectedGenre(null)}
           />
         )}

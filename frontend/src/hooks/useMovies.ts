@@ -26,10 +26,10 @@ export function useMovieDetail(tmdbId: number, type?: string) {
   })
 }
 
-export function useGenreMovies(genreName: string | null) {
+export function useGenreMovies(genreName: string | null, mediaType = 'movie') {
   return useQuery({
-    queryKey: ['genre', genreName],
-    queryFn: () => getGenreMovies(genreName!),
+    queryKey: ['genre', genreName, mediaType],
+    queryFn: () => getGenreMovies(genreName!, mediaType),
     enabled: !!genreName,
     staleTime: 6 * 60 * 60 * 1000,
   })

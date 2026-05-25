@@ -53,3 +53,20 @@ export async function seedAvailability(body: {
   const res = await api.post<ApiResponse<string>>('/admin/availability', body)
   return res.data.data ?? 'Done'
 }
+
+export interface AvailabilityEntry {
+  id: number
+  platformName: string
+  displayName: string
+  deepLink: string | null
+  availableUntil: string | null
+}
+
+export async function getMovieAvailability(tmdbId: number): Promise<AvailabilityEntry[]> {
+  const res = await api.get<ApiResponse<AvailabilityEntry[]>>(`/admin/availability/movie/${tmdbId}`)
+  return res.data.data ?? []
+}
+
+export async function deleteAvailability(id: number): Promise<void> {
+  await api.delete(`/admin/availability/${id}`)
+}

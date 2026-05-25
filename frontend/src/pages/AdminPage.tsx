@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Navigate } from 'react-router-dom'
-import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database, X, Star, Ban, RotateCcw } from 'lucide-react'
+import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database, X, Star, Ban, RotateCcw, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers, useSeedAvailability, useToggleBlacklist } from '@/hooks/useUser'
+import { useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers, useSeedAvailability, useToggleBlacklist, useMovieAvailability, useDeleteAvailability } from '@/hooks/useUser'
 import { searchMovies } from '@/api/movies'
 import type { AdminUserDto, MovieSearchResult } from '@/types'
 
@@ -209,6 +209,44 @@ function UserRow({ user }: { user: AdminUserDto }) {
   )
 }
 
+function ExistingEntries({ tmdbId }: { tmdbId: number }) {
+  const { data: entries = [], isLoading } = useMovieAvailability(tmdbId)
+  const { mutateAsync: remove, isPending } = useDeleteAvailability()
+
+  if (isLoading) return <p className="text-cinema-muted/50 text-xs font-body mt-2">Loading existing entries…</p>
+  if (entries.length === 0) return <p className="text-cinema-muted/50 text-xs font-body mt-2">No seeded entries for this title.</p>
+
+  return (
+    <div className="mt-3 space-y-1.5">
+      <p className="text-cinema-muted text-xs font-body font-semibold uppercase tracking-wider">Existing entries</p>
+      {entries.map((entry) => (
+        <div key={entry.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cinema-surface border border-cinema-navy-border">
+          <span className="flex-1 text-cinema-text font-body text-sm">{entry.displayName}</span>
+          {entry.deepLink && (
+            <a href={entry.deepLink} target="_blank" rel="noopener noreferrer"
+              className="text-cinema-muted/60 text-xs font-body hover:text-accent truncate max-w-[140px]">
+              {entry.deepLink}
+            </a>
+          )}
+          {entry.availableUntil && (
+            <span className="text-cinema-muted/60 text-xs font-body shrink-0">
+              until {new Date(entry.availableUntil).toLocaleDateString()}
+            </span>
+          )}
+          <button
+            onClick={() => remove(entry.id)}
+            disabled={isPending}
+            className="p-1 rounded text-cinema-muted hover:text-red-400 transition-colors shrink-0"
+            title="Delete entry"
+          >
+            {isPending ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function SeedForm() {
   const { data: platforms = [] } = useAdminPlatforms()
   const { mutateAsync: seed, isPending } = useSeedAvailability()
@@ -312,12 +350,15 @@ function SeedForm() {
 
         {/* Selected movie chip */}
         {selected && (
-          <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20">
-            <Check size={14} className="text-accent shrink-0" />
-            <span className="text-accent font-body text-sm font-medium flex-1 truncate">{selected.title}</span>
-            <span className="text-accent/60 text-xs font-body">{selected.mediaType === 'tv' ? 'TV' : 'Movie'} · {selected.releaseDate?.slice(0, 4)}</span>
-            <button onClick={() => setSelected(null)} className="text-cinema-muted hover:text-cinema-text ml-1 text-xs font-body">change</button>
-          </div>
+          <>
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20">
+              <Check size={14} className="text-accent shrink-0" />
+              <span className="text-accent font-body text-sm font-medium flex-1 truncate">{selected.title}</span>
+              <span className="text-accent/60 text-xs font-body">{selected.mediaType === 'tv' ? 'TV' : 'Movie'} · {selected.releaseDate?.slice(0, 4)}</span>
+              <button onClick={() => setSelected(null)} className="text-cinema-muted hover:text-cinema-text ml-1 text-xs font-body">change</button>
+            </div>
+            <ExistingEntries tmdbId={selected.tmdbId} />
+          </>
         )}
       </div>
 
