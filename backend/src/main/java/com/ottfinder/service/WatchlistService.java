@@ -10,7 +10,6 @@ import com.ottfinder.entity.User;
 import com.ottfinder.entity.Watchlist;
 import com.ottfinder.exception.MovieNotFoundException;
 import com.ottfinder.exception.WatchlistLimitException;
-import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.UserRepository;
 import com.ottfinder.repository.WatchlistRepository;
@@ -43,8 +42,8 @@ public class WatchlistService {
     private final WatchlistRepository watchlistRepository;
     private final UserRepository userRepository;
     private final MovieRepository movieRepository;
-    private final MovieAvailabilityRepository availabilityRepository;
     private final TMDBService tmdbService;
+    private final OTTAvailabilityService ottAvailabilityService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
@@ -185,17 +184,10 @@ public class WatchlistService {
 
     private WatchlistItem toWatchlistItem(Watchlist w) {
         Movie m = w.getMovie();
-        List<OttAvailability> platforms = availabilityRepository
-                .findByMovieIdWithPlatform(m.getId())
-                .stream()
-                .map(ma -> new OttAvailability(
-                        ma.getPlatform().getName(),
-                        ma.getPlatform().getDisplayName(),
-                        ma.getPlatform().getLogoUrl(),
-                        ma.getDeepLink(),
-                        ma.getAvailableUntil() != null ? ma.getAvailableUntil().toString() : null
-                ))
-                .toList();
+        // Use OTTAvailabilityService (Redis-first → JustWatch fallback) so the
+        // watchlist shows the same platforms as the movie detail page.
+        List<OttAvailability> platforms = ottAvailabilityService
+                .findAvailability(m.getTmdbId(), m.getMediaType(), m.getTitle());
 
         List<OttAvailability> expiring = platforms.stream()
                 .filter(p -> p.availableUntil() != null)

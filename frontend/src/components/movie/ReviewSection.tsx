@@ -212,9 +212,15 @@ function ReviewCard({ review }: { review: ReviewDto }) {
       {review.note && (
         <p className="text-cinema-muted text-sm font-body leading-relaxed">{review.note}</p>
       )}
-      <p className="text-cinema-muted/40 text-xs font-body">
-        {new Date(review.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-      </p>
+      <div className="flex items-center gap-2">
+        <p className="text-cinema-muted/40 text-xs font-body">
+          {new Date(review.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </p>
+        {review.updatedAt &&
+          new Date(review.updatedAt).getTime() - new Date(review.createdAt).getTime() > 60_000 && (
+          <span className="text-cinema-muted/40 text-xs font-body italic">(edited)</span>
+        )}
+      </div>
     </div>
   )
 }

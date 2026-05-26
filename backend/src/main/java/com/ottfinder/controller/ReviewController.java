@@ -133,6 +133,7 @@ public class ReviewController {
                 r.getRating(),
                 r.getNote(),
                 r.getCreatedAt(),
+                r.getUpdatedAt(),
                 r.getUser().getFirebaseUid().equals(currentUid)
         );
     }

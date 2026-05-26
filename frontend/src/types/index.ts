@@ -108,6 +108,7 @@ export interface ReviewDto {
   rating: number
   note: string | null
   createdAt: string
+  updatedAt: string | null
   isOwn: boolean
 }
 

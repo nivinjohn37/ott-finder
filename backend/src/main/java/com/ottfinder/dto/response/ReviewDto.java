@@ -9,5 +9,6 @@ public record ReviewDto(
         int rating,
         String note,
         OffsetDateTime createdAt,
+        OffsetDateTime updatedAt,
         boolean isOwn
 ) {}
