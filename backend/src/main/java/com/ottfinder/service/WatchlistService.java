@@ -1,7 +1,5 @@
 package com.ottfinder.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.OttAvailability;
 import com.ottfinder.dto.response.WatchlistItem;
@@ -17,16 +15,15 @@ import com.ottfinder.security.FirebasePrincipal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +31,6 @@ import java.util.List;
 public class WatchlistService {
 
     private static final int FREE_TIER_LIMIT = 5;
-    private static final Duration CACHE_TTL = Duration.ofHours(1);
 
     @Value("${tmdb.image-base-url}")
     private String imageBaseUrl;
@@ -44,30 +40,21 @@ public class WatchlistService {
     private final MovieRepository movieRepository;
     private final TMDBService tmdbService;
     private final OTTAvailabilityService ottAvailabilityService;
-    private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<WatchlistItem> getWatchlist(FirebasePrincipal principal) {
-        // Look up only — don't create user in a read-only transaction
+        // Platform data lives in ott:availability:{tmdbId} (6h TTL, per-movie).
+        // Baking platforms into a watchlist-level cache causes stale data when
+        // JustWatch results change, so we skip the list-level cache entirely.
         User user = userRepository.findByFirebaseUid(principal.uid()).orElse(null);
         if (user == null) return Collections.emptyList();
-        String cacheKey = "watchlist:user:" + user.getId();
 
-        String cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            return deserializeList(cached);
-        }
-
-        List<WatchlistItem> items = watchlistRepository
+        return watchlistRepository
                 .findByUserIdWithMovie(user.getId())
                 .stream()
                 .map(this::toWatchlistItem)
                 .toList();
-
-        cache(cacheKey, items);
-        return items;
     }
 
     @Transactional
@@ -220,25 +207,10 @@ public class WatchlistService {
         );
     }
 
-    private void cache(String key, Object value) {
-        try {
-            redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(value), CACHE_TTL);
-        } catch (Exception ex) {
-            log.warn("Redis cache write failed for key={}: {}", key, ex.getMessage());
-        }
-    }
-
     private void invalidateCache(Long userId) {
-        redisTemplate.delete("watchlist:user:" + userId);
-    }
-
-    private List<WatchlistItem> deserializeList(String json) {
-        try {
-            return objectMapper.readValue(json, new TypeReference<>() {});
-        } catch (Exception ex) {
-            log.warn("Watchlist cache deserialization failed: {}", ex.getMessage());
-            return Collections.emptyList();
-        }
+        // watchlist:user:{userId} list cache removed — platform data is served
+        // from per-movie ott:availability:{tmdbId} keys (6h TTL, always fresh).
+        // This method is kept as a no-op so call sites need no changes.
     }
 
     private String extractPath(String imageUrl) {
