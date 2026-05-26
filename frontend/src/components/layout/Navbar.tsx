@@ -1,21 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useCurrentUser } from '@/hooks/useUser'
+import { SearchBar } from '@/components/movie/SearchBar'
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchVal, setSearchVal] = useState('')
   const { user, signInWithGoogle, logout } = useAuth()
   const { theme, toggle } = useTheme()
   const { data: me } = useCurrentUser()
   const location = useLocation()
-  const navigate = useNavigate()
 
   const rafRef = useRef<number | null>(null)
   useEffect(() => {
@@ -37,15 +36,6 @@ export function Navbar() {
     setMobileOpen(false)
     setSearchOpen(false)
   }, [location.pathname])
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (searchVal.trim().length >= 2) {
-      navigate(`/search?q=${encodeURIComponent(searchVal.trim())}`)
-      setSearchOpen(false)
-      setSearchVal('')
-    }
-  }
 
   return (
     <>
@@ -171,31 +161,23 @@ export function Navbar() {
               className="absolute inset-0 bg-cinema-black/80 backdrop-blur-sm"
               onClick={() => setSearchOpen(false)}
             />
-            <motion.form
-              onSubmit={handleSearch}
+            <motion.div
               className="relative w-full max-w-2xl"
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -20, opacity: 0 }}
               transition={{ delay: 0.05 }}
             >
-              <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-cinema-muted" />
-              <input
-                autoFocus
-                type="text"
-                value={searchVal}
-                onChange={(e) => setSearchVal(e.target.value)}
-                placeholder="Search movies and shows…"
-                className="w-full pl-12 pr-14 py-4 bg-cinema-navy border border-cinema-navy-border rounded-xl text-cinema-text text-lg font-body placeholder:text-cinema-muted focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
-              />
+              <SearchBar autoFocus />
               <button
                 type="button"
                 onClick={() => setSearchOpen(false)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-cinema-muted hover:text-cinema-text"
+                className="absolute right-4 top-4 text-cinema-muted hover:text-cinema-text z-10"
+                aria-label="Close search"
               >
                 <X size={20} />
               </button>
-            </motion.form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
