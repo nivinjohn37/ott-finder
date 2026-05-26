@@ -64,6 +64,7 @@ export function Navbar() {
               <NavLink to="/" label="Home" />
               <NavLink to="/trending" label="Trending" />
               {user && <NavLink to="/watchlist" label="My Watchlist" />}
+              {user && <NavLink to="/groups" label="Groups" />}
             </div>
 
             {/* Actions */}
@@ -195,6 +196,7 @@ export function Navbar() {
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
+              {user && <MobileLink to="/groups" label="Groups" />}
               {user && <MobileLink to="/profile" label="Profile" />}
               {me?.role === 'admin' && <MobileLink to="/admin" label="Admin" />}
               {user ? (

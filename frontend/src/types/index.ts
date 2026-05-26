@@ -120,6 +120,59 @@ export interface ReviewsResponse {
   hasMore: boolean
 }
 
+export interface GroupMemberDto {
+  userId: number
+  displayName: string
+  role: 'admin' | 'member'
+  joinedAt: string | null
+}
+
+export interface GroupDto {
+  id: number
+  name: string
+  inviteCode: string
+  memberCount: number
+  createdAt: string
+  isAdmin: boolean
+  members: GroupMemberDto[]
+}
+
+export interface MemberProgressDto {
+  displayName: string
+  watched: boolean
+  watchedAt: string | null
+}
+
+export interface GroupWatchlistItemDto {
+  id: number
+  movie: MovieSearchResult
+  addedByName: string
+  addedAt: string
+  currentUserWatched: boolean
+  watchedCount: number
+  totalMembers: number
+  progress: MemberProgressDto[]
+}
+
+export interface LeaderboardEntryDto {
+  userId: number
+  displayName: string
+  watchedCount: number
+  totalItems: number
+  percentage: number
+  rank: number
+}
+
+export interface GroupSuggestionDto {
+  id: number
+  movie: MovieSearchResult
+  suggestedByName: string
+  upvotes: number
+  downvotes: number
+  currentUserVote: number
+  suggestedAt: string
+}
+
 export interface BadgeDto {
   badgeType: string
   earnedAt: string

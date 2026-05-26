@@ -1,11 +1,12 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check } from 'lucide-react'
+import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check, Users, ChevronDown, Loader2 } from 'lucide-react'
 import { ActorDrawer } from '@/components/movie/ActorDrawer'
 import { GenreDrawer } from '@/components/movie/GenreDrawer'
 import { ReviewSection } from '@/components/movie/ReviewSection'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
+import { useMyGroups, useAddToGroupWatchlist } from '@/hooks/useGroups'
 import { PlatformBadge } from '@/components/common/PlatformBadge'
 import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect } from 'react'
@@ -30,7 +31,9 @@ export function MovieDetailPage() {
   const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null)
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null)
   const [showAllCast, setShowAllCast] = useState(false)
+  const [showGroupPicker, setShowGroupPicker] = useState(false)
   const { addItem } = useRecentlyViewed()
+  const { data: groups = [] } = useMyGroups()
 
   useEffect(() => {
     if (movie && user) addItem(movie)
@@ -254,6 +257,25 @@ export function MovieDetailPage() {
               >
                 {shared ? <><Check size={16} className="text-green-400" /> Copied!</> : <><Share2 size={16} /> Share</>}
               </button>
+
+              {user && groups.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowGroupPicker(v => !v)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg glass text-cinema-muted hover:text-cinema-text font-body font-medium text-sm transition-all"
+                  >
+                    <Users size={16} /> Add to Group <ChevronDown size={13} />
+                  </button>
+                  {showGroupPicker && movie && (
+                    <GroupPickerDropdown
+                      tmdbId={movie.tmdbId}
+                      mediaType={movie.mediaType}
+                      groups={groups}
+                      onClose={() => setShowGroupPicker(false)}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {watchlistError && (
@@ -352,6 +374,97 @@ export function MovieDetailPage() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+function GroupPickerDropdown({
+  tmdbId, mediaType, groups, onClose,
+}: {
+  tmdbId: number
+  mediaType: string
+  groups: import('@/types').GroupDto[]
+  onClose: () => void
+}) {
+  const [addingGroupId, setAddingGroupId] = useState<number | null>(null)
+  const [addedIds, setAddedIds] = useState<Set<number>>(new Set())
+  const [error, setError] = useState<string | null>(null)
+
+  // We need per-group mutation — use the hook at the first group level and call imperatively
+  // Instead, we'll use individual add hooks lazily via a wrapper component
+  return (
+    <div className="absolute left-0 top-full mt-1 z-20 bg-cinema-navy border border-cinema-navy-border rounded-xl shadow-lg min-w-48 py-2 overflow-hidden">
+      <p className="px-3 py-1 text-2xs font-body text-cinema-muted/50 uppercase tracking-wider">Add to group</p>
+      {groups.map((group) => (
+        <GroupPickerRow
+          key={group.id}
+          group={group}
+          tmdbId={tmdbId}
+          mediaType={mediaType}
+          addingGroupId={addingGroupId}
+          setAddingGroupId={setAddingGroupId}
+          addedIds={addedIds}
+          setAddedIds={setAddedIds}
+          setError={setError}
+        />
+      ))}
+      {error && <p className="px-3 pb-2 text-xs text-red-400 font-body">{error}</p>}
+      <div className="border-t border-cinema-navy-border mt-1 pt-1">
+        <button
+          onClick={onClose}
+          className="w-full px-3 py-1.5 text-left text-xs text-cinema-muted/50 hover:text-cinema-muted font-body transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function GroupPickerRow({
+  group, tmdbId, mediaType, addingGroupId, setAddingGroupId, addedIds, setAddedIds, setError,
+}: {
+  group: import('@/types').GroupDto
+  tmdbId: number
+  mediaType: string
+  addingGroupId: number | null
+  setAddingGroupId: (id: number | null) => void
+  addedIds: Set<number>
+  setAddedIds: (ids: Set<number>) => void
+  setError: (e: string | null) => void
+}) {
+  const { mutateAsync: addToGroup } = useAddToGroupWatchlist(group.id)
+  const isAdding = addingGroupId === group.id
+  const isAdded = addedIds.has(group.id)
+
+  async function handleAdd() {
+    if (isAdded || isAdding) return
+    setError(null)
+    setAddingGroupId(group.id)
+    try {
+      await addToGroup({ tmdbId, mediaType })
+      setAddedIds(new Set([...addedIds, group.id]))
+    } catch {
+      setError('Already in this group or failed to add.')
+    } finally {
+      setAddingGroupId(null)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleAdd}
+      disabled={isAdding || isAdded}
+      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-cinema-surface transition-colors disabled:opacity-60"
+    >
+      {isAdding ? (
+        <Loader2 size={13} className="text-cinema-muted animate-spin shrink-0" />
+      ) : isAdded ? (
+        <Check size={13} className="text-green-400 shrink-0" />
+      ) : (
+        <Users size={13} className="text-cinema-muted/50 shrink-0" />
+      )}
+      <span className="text-cinema-text font-body text-sm truncate">{group.name}</span>
+    </button>
   )
 }
 
