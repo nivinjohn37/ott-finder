@@ -269,7 +269,7 @@ Gives you: stack traces, error grouping, alerts to email/Slack, performance trac
 
 ### 4b — Uptime Monitoring: UptimeRobot *(free)*
 
-- Add a monitor for `https://ott-finder-production.up.railway.app/api/health`
+- Add a monitor for `https://ott-finder-production.up.railway.app/api/health` (Railway URL unchanged)
 - Checks every 5 minutes, emails you if down
 - Free for up to 50 monitors
 

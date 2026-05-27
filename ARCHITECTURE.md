@@ -8,7 +8,7 @@ _Last updated: 2026-05-21_
 **Who builds it:** Nivin (Senior Backend Engineer, Java/Spring Boot)  
 **Purpose:** Portfolio project for senior product engineering roles in Australia  
 **Live URLs:**
-- Frontend: https://ott-finder-delta.vercel.app
+- Frontend: https://watchmateapp.vercel.app
 - Backend: https://ott-finder-production.up.railway.app
 
 ---
