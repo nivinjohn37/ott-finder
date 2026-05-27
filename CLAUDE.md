@@ -1,4 +1,4 @@
-# OTT Finder — Claude Project Instructions
+# WatchMate — Claude Project Instructions
 
 See @ARCHITECTURE.md for the complete system design, DB schema, API contracts, and 3-day build plan.
 

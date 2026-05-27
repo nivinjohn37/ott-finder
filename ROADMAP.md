@@ -1,4 +1,4 @@
-# OTT Finder — Product Roadmap
+# WatchMate — Product Roadmap
 
 Last updated: 2026-05-21
 

@@ -1,4 +1,4 @@
-# OTT Finder — Bug & Feature Tracker
+# WatchMate — Bug & Feature Tracker
 
 _Last updated: 2026-05-23_
 

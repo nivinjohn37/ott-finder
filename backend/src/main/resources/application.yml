@@ -1,6 +1,6 @@
 spring:
   application:
-    name: ott-finder
+    name: watchmate
 
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ottfinder}

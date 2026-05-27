@@ -14,8 +14,8 @@
     <groupId>com.ottfinder</groupId>
     <artifactId>ott-finder</artifactId>
     <version>1.0.0-SNAPSHOT</version>
-    <name>OTT Finder</name>
-    <description>Find where to stream movies and shows in India</description>
+    <name>WatchMate</name>
+    <description>Discover, track and watch together — your social movie companion</description>
 
     <properties>
         <java.version>21</java.version>

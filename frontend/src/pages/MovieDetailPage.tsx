@@ -41,8 +41,8 @@ export function MovieDetailPage() {
   }, [movie?.tmdbId, user?.uid])
 
   useEffect(() => {
-    if (movie) document.title = `${movie.title} — OTT Finder`
-    return () => { document.title = 'OTT Finder' }
+    if (movie) document.title = `${movie.title} — WatchMate`
+    return () => { document.title = 'WatchMate' }
   }, [movie?.title])
 
   async function handleShare() {

@@ -52,10 +52,10 @@ export function Navbar() {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 group">
               <div className="w-8 h-8 rounded-lg accent-gradient flex items-center justify-center shadow-accent-glow">
-                <span className="text-white font-heading font-bold text-sm">O</span>
+                <span className="text-white font-heading font-bold text-sm">W</span>
               </div>
               <span className="font-heading font-bold text-lg tracking-tight">
-                OTT<span className="text-gradient">Finder</span>
+                Watch<span className="text-gradient">Mate</span>
               </span>
             </Link>
 

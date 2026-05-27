@@ -1,4 +1,4 @@
-# OTT Finder — Architecture & Implementation Plan
+# WatchMate — Architecture & Implementation Plan
 
 _Last updated: 2026-05-21_
 

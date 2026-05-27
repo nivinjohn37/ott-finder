@@ -1,4 +1,4 @@
-# OTT Finder — Production Readiness Plan
+# WatchMate — Production Readiness Plan
 
 _Last updated: 2026-05-27_
 
