@@ -112,6 +112,27 @@ group_suggestions        (id, group_id, movie_id, suggested_by → users.id, upv
 
 ---
 
+## Phase 5 — Production Readiness *(do last, before any public launch)*
+
+Full details in [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md).
+
+- [ ] **Rate limiting** — Redis counter per IP on search, join-group, reviews (20 req/min)
+- [ ] **Group membership audit** — verify all `/api/groups/{id}/**` endpoints return 403 for non-members
+- [ ] **Avatar upload validation** — 2MB size cap, JPEG/PNG/WebP only
+- [ ] **Firebase fail-safe** — fail hard on startup if credentials missing in non-local profile
+- [ ] **TMDB Watch Providers migration** — replace unofficial JustWatch API with TMDB's official `/watch/providers` endpoint (same data, free, stable)
+- [ ] **Sentry error tracking** — `sentry-spring-boot-starter`, free tier, 30 min to add
+- [ ] **UptimeRobot** — monitor `/api/health` every 5 min, free
+- [ ] **Security headers** — CSP, X-Frame-Options, Content-Type-Options via Spring Security
+- [ ] **Audit logging** — `audit_logs` table for admin actions, role changes, group admin ops
+- [ ] **Connection pool tuning** — HikariCP `maximum-pool-size: 20`
+- [ ] **Group invite code regeneration** — admin can invalidate and regenerate invite code
+- [ ] **Pagination / infinite scroll** — `useInfiniteQuery` + IntersectionObserver
+- [ ] **Horizontal scaling** — Railway Pro multi-instance when >500 concurrent users
+- [ ] **Move avatar storage to object storage** — Cloudflare R2 instead of PostgreSQL BYTEA
+
+---
+
 ## Known Limitations
 
 | Limitation | Workaround |
