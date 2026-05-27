@@ -63,6 +63,7 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-6">
               <NavLink to="/" label="Home" />
               <NavLink to="/trending" label="Trending" />
+              <NavLink to="/features" label="Features" />
               {user && <NavLink to="/watchlist" label="My Watchlist" />}
               {user && <NavLink to="/groups" label="Groups" />}
             </div>
@@ -195,6 +196,7 @@ export function Navbar() {
             <div className="flex flex-col gap-3">
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
+              <MobileLink to="/features" label="Features" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
               {user && <MobileLink to="/groups" label="Groups" />}
               {user && <MobileLink to="/profile" label="Profile" />}
