@@ -2,11 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Discover movies, track what you watch, and watch together with friends" />
+
+    <!-- Primary meta -->
     <title>WatchMate — Discover, Track & Watch Together</title>
+    <meta name="description" content="Discover movies, track what you watch, and watch together with friends across Indian OTT platforms." />
+    <meta name="application-name" content="WatchMate" />
+    <meta name="theme-color" content="#F04E28" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- PWA manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- iOS / Apple PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="WatchMate" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="WatchMate — Discover, Track & Watch Together" />
+    <meta property="og:description" content="Find where to stream any movie in India, track your watchlist, and watch together with friends." />
+    <meta property="og:url" content="https://watchmateapp.vercel.app" />
+    <meta property="og:image" content="https://watchmateapp.vercel.app/icon-512.svg" />
+
+    <!-- Anti-flash theme script -->
     <script>try{if(localStorage.getItem('ott_theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
+
+    <!-- Register service worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {})
+        })
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

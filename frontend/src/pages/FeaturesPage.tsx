@@ -4,7 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import {
   Search, Tv2, Bookmark, Star, Users, Trophy, Lightbulb,
   User, Award, Palette, TrendingUp, Zap, ArrowRight, Play,
-  CheckCircle2, Heart, Globe,
+  CheckCircle2, Heart, Globe, Smartphone, Share2, MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
@@ -142,6 +142,14 @@ const FEATURES = [
     color: '#34D399',
     bg: 'rgba(52,211,153,0.08)',
     border: 'rgba(52,211,153,0.2)',
+  },
+  {
+    icon: Smartphone,
+    title: 'Install as App',
+    description: 'Add WatchMate to your home screen on iOS or Android. Works offline, launches instantly — no App Store needed.',
+    color: '#F04E28',
+    bg: 'rgba(240,78,40,0.08)',
+    border: 'rgba(240,78,40,0.2)',
   },
 ]
 
@@ -505,6 +513,154 @@ export function FeaturesPage() {
           </div>
         </section>
       </FadeIn>
+
+      {/* ── Install as App ──────────────────────────────────────────────────── */}
+      <section className="max-w-5xl mx-auto px-4 py-24">
+        <FadeUp className="text-center mb-14">
+          <p className="text-accent text-xs font-body font-semibold uppercase tracking-widest mb-3">
+            Progressive Web App
+          </p>
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl text-cinema-text mb-4">
+            Add to your home screen
+          </h2>
+          <p className="text-cinema-muted/60 font-body text-base max-w-xl mx-auto">
+            Install WatchMate like a native app — no App Store, no downloads.
+            Works on any phone, launches instantly, looks great fullscreen.
+          </p>
+        </FadeUp>
+
+        <div className="grid sm:grid-cols-2 gap-6">
+          {/* iOS */}
+          <FadeUp delay={0.05}>
+            <div className="rounded-2xl border border-cinema-navy-border bg-cinema-navy p-6 h-full">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-[#007AFF]/15 border border-[#007AFF]/30 flex items-center justify-center shrink-0">
+                  <Smartphone size={18} className="text-[#007AFF]" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-cinema-text text-sm">iPhone / iPad</h3>
+                  <p className="text-cinema-muted/50 text-xs font-body">Safari browser</p>
+                </div>
+              </div>
+              <ol className="space-y-4">
+                {[
+                  {
+                    icon: Share2,
+                    step: 'Open in Safari',
+                    detail: 'Visit watchmateapp.vercel.app in Safari (not Chrome — iOS only supports PWA install from Safari).',
+                  },
+                  {
+                    icon: Share2,
+                    step: 'Tap the Share button',
+                    detail: 'Tap the Share icon (box with arrow pointing up) at the bottom of your screen.',
+                  },
+                  {
+                    icon: () => (
+                      <div className="w-3.5 h-3.5 rounded border border-current flex items-center justify-center">
+                        <div className="w-1 h-1 rounded-full bg-current" />
+                      </div>
+                    ),
+                    step: 'Add to Home Screen',
+                    detail: 'Scroll down in the share sheet and tap "Add to Home Screen". Give it a name and tap Add.',
+                  },
+                  {
+                    icon: Smartphone,
+                    step: 'Done!',
+                    detail: 'WatchMate appears on your home screen and opens fullscreen, just like a native app.',
+                  },
+                ].map((item, i) => (
+                  <li key={i} className="flex gap-3">
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-[#007AFF]/15 border border-[#007AFF]/30 flex items-center justify-center text-[#007AFF] font-heading font-bold text-xs shrink-0">
+                        {i + 1}
+                      </div>
+                      {i < 3 && <div className="w-px flex-1 bg-cinema-navy-border mt-1" />}
+                    </div>
+                    <div className="pb-1">
+                      <p className="font-body font-semibold text-cinema-text text-sm">{item.step}</p>
+                      <p className="text-cinema-muted/60 text-xs font-body mt-0.5 leading-relaxed">{item.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </FadeUp>
+
+          {/* Android */}
+          <FadeUp delay={0.1}>
+            <div className="rounded-2xl border border-cinema-navy-border bg-cinema-navy p-6 h-full">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-[#34A853]/15 border border-[#34A853]/30 flex items-center justify-center shrink-0">
+                  <Smartphone size={18} className="text-[#34A853]" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-cinema-text text-sm">Android</h3>
+                  <p className="text-cinema-muted/50 text-xs font-body">Chrome browser</p>
+                </div>
+              </div>
+              <ol className="space-y-4">
+                {[
+                  {
+                    step: 'Open in Chrome',
+                    detail: 'Visit watchmateapp.vercel.app in Chrome on your Android device.',
+                  },
+                  {
+                    step: 'Look for the install banner',
+                    detail: 'Chrome may automatically show an "Add to Home Screen" or "Install app" banner at the bottom. Tap it.',
+                  },
+                  {
+                    step: 'Or use the menu',
+                    detail: 'If no banner appears, tap the ⋮ menu (top right) → "Add to Home Screen" or "Install app".',
+                  },
+                  {
+                    step: 'Done!',
+                    detail: 'WatchMate installs like a native app with its own icon, splash screen, and fullscreen experience.',
+                  },
+                ].map((item, i) => (
+                  <li key={i} className="flex gap-3">
+                    <div className="flex flex-col items-center shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-[#34A853]/15 border border-[#34A853]/30 flex items-center justify-center text-[#34A853] font-heading font-bold text-xs shrink-0">
+                        {i + 1}
+                      </div>
+                      {i < 3 && <div className="w-px flex-1 bg-cinema-navy-border mt-1" />}
+                    </div>
+                    <div className="pb-1">
+                      <p className="font-body font-semibold text-cinema-text text-sm">{item.step}</p>
+                      <p className="text-cinema-muted/60 text-xs font-body mt-0.5 leading-relaxed">{item.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              {/* Android tip */}
+              <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-[#34A853]/08 border border-[#34A853]/20">
+                <MoreHorizontal size={13} className="text-[#34A853] mt-0.5 shrink-0" />
+                <p className="text-[#34A853]/80 text-xs font-body leading-relaxed">
+                  <strong>Tip:</strong> On some Android versions, the menu option says "Install app" instead of "Add to Home Screen" — both do the same thing.
+                </p>
+              </div>
+            </div>
+          </FadeUp>
+        </div>
+
+        {/* PWA benefits strip */}
+        <FadeUp delay={0.15} className="mt-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { icon: '⚡', label: 'Instant launch', sub: 'No loading screen' },
+              { icon: '📱', label: 'Fullscreen', sub: 'No browser UI' },
+              { icon: '🔔', label: 'Offline support', sub: 'App shell cached' },
+              { icon: '🏠', label: 'Home screen icon', sub: 'Feels native' },
+            ].map((b) => (
+              <div key={b.label} className="rounded-xl bg-cinema-navy border border-cinema-navy-border p-3 text-center">
+                <div className="text-xl mb-1">{b.icon}</div>
+                <p className="font-body font-semibold text-cinema-text text-xs">{b.label}</p>
+                <p className="text-cinema-muted/50 text-2xs font-body mt-0.5">{b.sub}</p>
+              </div>
+            ))}
+          </div>
+        </FadeUp>
+      </section>
 
       {/* ── Bottom CTA ──────────────────────────────────────────────────────── */}
       <section className="max-w-4xl mx-auto px-4 py-24 text-center">
