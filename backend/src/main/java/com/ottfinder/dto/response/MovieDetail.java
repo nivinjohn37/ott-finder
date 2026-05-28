@@ -17,5 +17,6 @@ public record MovieDetail(
         String tagline,
         Integer runtime,
         List<String> genres,
-        List<CastMember> cast
+        List<CastMember> cast,
+        List<CrewMember> crew
 ) {}

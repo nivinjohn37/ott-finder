@@ -32,6 +32,13 @@ export interface CastMember {
   profileUrl: string | null
 }
 
+export interface CrewMember {
+  personId?: number | null
+  name: string
+  job: string
+  profileUrl: string | null
+}
+
 export interface PersonFilmography {
   personId: number
   name: string | null
@@ -47,6 +54,7 @@ export interface MovieDetail extends MovieSearchResult {
   runtime: number | null
   genres: string[]
   cast: CastMember[]
+  crew: CrewMember[]
 }
 
 export interface MovieSummary {

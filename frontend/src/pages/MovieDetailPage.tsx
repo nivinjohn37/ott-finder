@@ -1,6 +1,6 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Share2, Check, Users, ChevronDown, Loader2 } from 'lucide-react'
+import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Film, Share2, Check, Users, ChevronDown, Loader2 } from 'lucide-react'
 import { ActorDrawer } from '@/components/movie/ActorDrawer'
 import { GenreDrawer } from '@/components/movie/GenreDrawer'
 import { ReviewSection } from '@/components/movie/ReviewSection'
@@ -326,6 +326,42 @@ export function MovieDetailPage() {
               </div>
             )}
 
+            {/* Crew */}
+            {movie.crew && movie.crew.length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-heading font-semibold text-base text-cinema-text mb-4 flex items-center gap-2">
+                  <Film size={15} className="text-cinema-muted" /> Key Crew
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-2.5">
+                  {groupCrewByLabel(movie.crew).map(({ label, members }) => (
+                    <div key={label} className="flex gap-3 items-baseline">
+                      <span className="text-cinema-muted/60 font-body text-xs w-28 shrink-0">{label}</span>
+                      <div className="flex flex-wrap gap-x-2 gap-y-1">
+                        {members.map((member) =>
+                          member.personId ? (
+                            <button
+                              key={member.name}
+                              onClick={() => {
+                                if (!user) { signInWithGoogle(); return }
+                                setSelectedPersonId(member.personId!)
+                              }}
+                              className="text-cinema-text font-body text-sm hover:text-accent transition-colors"
+                            >
+                              {member.name}
+                            </button>
+                          ) : (
+                            <span key={member.name} className="text-cinema-text font-body text-sm">
+                              {member.name}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Reviews */}
             <div className="mt-8">
               <div className="flex items-center gap-2 mb-4">
@@ -466,6 +502,36 @@ function GroupPickerRow({
       <span className="text-cinema-text font-body text-sm truncate">{group.name}</span>
     </button>
   )
+}
+
+const WRITING_JOBS = new Set(['Screenplay', 'Writer', 'Story', 'Screenstory'])
+const JOB_LABELS: Record<string, string> = {
+  'Director': 'Directed by',
+  'Creator': 'Created by',
+  'Director of Photography': 'Cinematography',
+  'Original Music Composer': 'Music',
+}
+const LABEL_ORDER = ['Directed by', 'Created by', 'Written by', 'Cinematography', 'Music']
+
+function groupCrewByLabel(crew: import('@/types').CrewMember[]) {
+  const groups = new Map<string, import('@/types').CrewMember[]>()
+  for (const member of crew) {
+    const label = WRITING_JOBS.has(member.job)
+      ? 'Written by'
+      : (JOB_LABELS[member.job] ?? member.job)
+    if (!groups.has(label)) groups.set(label, [])
+    if (!groups.get(label)!.find((m) => m.name === member.name)) {
+      groups.get(label)!.push(member)
+    }
+  }
+  const result: { label: string; members: import('@/types').CrewMember[] }[] = []
+  for (const label of LABEL_ORDER) {
+    if (groups.has(label)) result.push({ label, members: groups.get(label)! })
+  }
+  for (const [label, members] of groups) {
+    if (!LABEL_ORDER.includes(label)) result.push({ label, members })
+  }
+  return result
 }
 
 function TrailerModal({ trailerKey, onClose }: { trailerKey: string; onClose: () => void }) {

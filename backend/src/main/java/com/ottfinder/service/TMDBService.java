@@ -3,6 +3,7 @@ package com.ottfinder.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottfinder.dto.response.CastMember;
+import com.ottfinder.dto.response.CrewMember;
 import com.ottfinder.dto.response.MovieDetail;
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.OttAvailability;
@@ -20,7 +21,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,7 +97,9 @@ public class TMDBService {
         String cacheKey = "tmdb:movie:" + tmdbId;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
-            return deserialize(cached, MovieDetail.class);
+            MovieDetail hit = deserialize(cached, MovieDetail.class);
+            if (hit != null) return hit;
+            // Schema changed — fall through to re-fetch
         }
 
         String endpoint = "movie".equals(mediaType) ? "/movie/" : "/tv/";
@@ -292,6 +297,7 @@ public class TMDBService {
             String trailerKey = extractTrailerKey((Map<String, Object>) r.get("videos"));
             List<String> genres = extractGenres((List<Map<String, Object>>) r.get("genres"));
             List<CastMember> cast = extractCast((Map<String, Object>) r.get("credits"));
+            List<CrewMember> crew = extractCrew((Map<String, Object>) r.get("credits"), r, mediaType);
             Integer runtime = "tv".equals(mediaType)
                     ? extractTvRuntime((List<Integer>) r.get("episode_run_time"))
                     : toInt(r.get("runtime"));
@@ -311,7 +317,8 @@ public class TMDBService {
                     (String) r.get("tagline"),
                     runtime,
                     genres,
-                    cast
+                    cast,
+                    crew
             );
         } catch (Exception ex) {
             log.error("TMDB detail fetch failed for tmdbId={}: {}", tmdbId, ex.getMessage());
@@ -341,6 +348,51 @@ public class TMDBService {
                         buildImageUrl((String) c.get("profile_path"))
                 ))
                 .toList();
+    }
+
+    private static final Set<String> KEY_CREW_JOBS = Set.of(
+            "Director", "Director of Photography", "Original Music Composer",
+            "Screenplay", "Writer", "Story"
+    );
+
+    @SuppressWarnings("unchecked")
+    private List<CrewMember> extractCrew(Map<String, Object> credits, Map<String, Object> root, String mediaType) {
+        List<CrewMember> result = new ArrayList<>();
+
+        // TV: creators come from top-level created_by[], not credits.crew
+        if ("tv".equals(mediaType)) {
+            List<Map<String, Object>> creators = (List<Map<String, Object>>) root.get("created_by");
+            if (creators != null) {
+                creators.stream()
+                        .limit(2)
+                        .map(c -> new CrewMember(
+                                toInt(c.get("id")),
+                                (String) c.get("name"),
+                                "Creator",
+                                buildImageUrl((String) c.get("profile_path"))))
+                        .forEach(result::add);
+            }
+        }
+
+        if (credits == null) return result;
+        List<Map<String, Object>> crewList = (List<Map<String, Object>>) credits.get("crew");
+        if (crewList == null) return result;
+
+        // Keep at most 2 entries per job, preserving TMDB order
+        Map<String, Integer> jobCounts = new LinkedHashMap<>();
+        for (Map<String, Object> c : crewList) {
+            String job = (String) c.get("job");
+            if (!KEY_CREW_JOBS.contains(job)) continue;
+            int count = jobCounts.getOrDefault(job, 0);
+            if (count >= 2) continue;
+            result.add(new CrewMember(
+                    toInt(c.get("id")),
+                    (String) c.get("name"),
+                    job,
+                    buildImageUrl((String) c.get("profile_path"))));
+            jobCounts.put(job, count + 1);
+        }
+        return result;
     }
 
     private Integer extractTvRuntime(List<Integer> episodeRunTime) {
