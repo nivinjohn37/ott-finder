@@ -162,7 +162,7 @@ public class TMDBService {
     }
 
     public PersonFilmography getPersonFilmography(Integer personId) {
-        String cacheKey = "tmdb:person:" + personId;
+        String cacheKey = "tmdb:person:v2:" + personId;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             PersonFilmography result = deserialize(cached, PersonFilmography.class);
@@ -189,25 +189,46 @@ public class TMDBService {
             String name = (String) r.get("name");
             String knownFor = (String) r.get("known_for_department");
 
+            // Directors/writers appear in crew[], not cast[] — using cast for them
+            // yields talk-show appearances and red-carpet events, not their actual work.
+            boolean preferCrew = "Directing".equals(knownFor)
+                    || "Writing".equals(knownFor)
+                    || "Production".equals(knownFor);
+
             List<MovieSearchResult> credits = Collections.emptyList();
             Map<String, Object> combined = (Map<String, Object>) r.get("combined_credits");
             if (combined != null) {
                 List<Map<String, Object>> castList = (List<Map<String, Object>>) combined.get("cast");
-                if (castList != null) {
-                    credits = castList.stream()
-                            .filter(c -> c.get("poster_path") != null)
-                            .filter(c -> {
-                                Object vc = c.get("vote_count");
-                                return vc instanceof Number n && n.intValue() > 10;
-                            })
-                            .sorted((a, b) -> Double.compare(
-                                    toDoubleOrZero(b.get("popularity")),
-                                    toDoubleOrZero(a.get("popularity"))))
-                            .limit(20)
-                            .map(this::mapToSearchResult)
-                            .filter(Objects::nonNull)
-                            .toList();
+                List<Map<String, Object>> crewList = (List<Map<String, Object>>) combined.get("crew");
+
+                List<Map<String, Object>> sourceList;
+                if (preferCrew && crewList != null) {
+                    // Directors: only their "Director" credits; writers: any crew entry
+                    String filterJob = "Directing".equals(knownFor) ? "Director" : null;
+                    Set<Object> seenIds = new java.util.HashSet<>();
+                    sourceList = crewList.stream()
+                            .filter(c -> filterJob == null || filterJob.equals(c.get("job")))
+                            .filter(c -> seenIds.add(c.get("id")))  // deduplicate same movie
+                            .collect(java.util.stream.Collectors.toList());
+                } else {
+                    sourceList = castList != null ? castList : Collections.emptyList();
                 }
+
+                // Lower vote threshold for crew (regional films have fewer votes than Hollywood)
+                int minVotes = preferCrew ? 3 : 10;
+                credits = sourceList.stream()
+                        .filter(c -> c.get("poster_path") != null)
+                        .filter(c -> {
+                            Object vc = c.get("vote_count");
+                            return vc instanceof Number n && n.intValue() >= minVotes;
+                        })
+                        .sorted((a, b) -> Double.compare(
+                                toDoubleOrZero(b.get("popularity")),
+                                toDoubleOrZero(a.get("popularity"))))
+                        .limit(20)
+                        .map(this::mapToSearchResult)
+                        .filter(Objects::nonNull)
+                        .toList();
             }
 
             return new PersonFilmography(personId, name, buildImageUrl((String) r.get("profile_path")), knownFor, credits);
