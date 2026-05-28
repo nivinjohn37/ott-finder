@@ -98,8 +98,8 @@ public class TMDBService {
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             MovieDetail hit = deserialize(cached, MovieDetail.class);
-            if (hit != null) return hit;
-            // Schema changed — fall through to re-fetch
+            // crew == null means stale cache entry from before crew was added — re-fetch
+            if (hit != null && hit.crew() != null) return hit;
         }
 
         String endpoint = "movie".equals(mediaType) ? "/movie/" : "/tv/";
