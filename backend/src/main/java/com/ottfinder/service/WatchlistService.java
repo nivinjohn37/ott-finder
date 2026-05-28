@@ -61,7 +61,7 @@ public class WatchlistService {
     public WatchlistItem addToWatchlist(FirebasePrincipal principal, Integer tmdbId, String mediaType) {
         User user = getOrCreateUser(principal);
 
-        if (watchlistRepository.countByUserId(user.getId()) >= FREE_TIER_LIMIT) {
+        if (!"admin".equals(user.getRole()) && watchlistRepository.countByUserId(user.getId()) >= FREE_TIER_LIMIT) {
             throw new WatchlistLimitException();
         }
 

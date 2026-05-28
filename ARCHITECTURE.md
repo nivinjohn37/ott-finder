@@ -298,8 +298,13 @@ notification_logs (
 | V10 | Add `avatar_data` + `avatar_content_type` to users (profile avatar upload) |
 | V11 | Add `genres TEXT` to movies; create `user_preferences` table |
 | V12 | Add `role VARCHAR(20) DEFAULT 'user'` to users |
+| V13 | Create reviews table |
+| V14 | Add `blacklisted` to users |
+| V15 | Create user badges table |
+| V16 | Create groups table |
+| V17 | Seed admin role for app owner (getnivinjohn@gmail.com) |
 
-Next available: **V13**
+Next available: **V18**
 
 ### OTT Platform Seeds (V7 migration)
 
