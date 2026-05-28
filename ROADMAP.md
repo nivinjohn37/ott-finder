@@ -1,6 +1,6 @@
 # WatchMate — Product Roadmap
 
-Last updated: 2026-05-21
+Last updated: 2026-05-28
 
 **Goal:** Grow from MVP into a portfolio centrepiece for senior product engineering roles in Australia.
 
@@ -39,12 +39,19 @@ Last updated: 2026-05-21
 
 ---
 
-## Phase 2 — Social Layer
+## Phase 2 — Social Layer ✓ *(mostly done)*
 
-- [ ] **Ratings + reviews** — new `reviews` table: `user_id, movie_id, rating 1-5, note TEXT, created_at`. Show aggregate rating + review list on movie detail page.
-- [ ] **Gamification badges** — "First Review", "10 Movies Watched", "Watchlist Collector". Awarded server-side, displayed on profile.
-- [ ] **Genre movies drawer** — click genre pill → slide-in panel with top movies in that genre. Backend: `GET /api/movies/genre/{id}`, Redis `tmdb:genre:{id}` TTL 6h. Shares same drawer component as actor drawer.
-- [ ] **Admin OTT seeding UI** — form to manually add platform availability for movies JustWatch misses (Indian regional films).
+- [x] **Ratings + reviews** — `reviews` table (V13), `ReviewController`, `ReviewSection` on movie detail page.
+- [x] **Gamification badges** — `BadgeService`, `UserBadge` entity, `BadgeCheckEvent`; "First Review", "10 Movies Watched", "Watchlist Collector" awarded server-side, shown on profile.
+- [x] **Genre movies drawer** — `GenreDrawer.tsx`, click genre pill → slide-in panel; `GET /api/movies/genre/{id}`.
+- [x] **Admin OTT seeding UI** — `AdminPage` `SeedForm`: search movie → pick platform → deep link → optional expiry. Edit/delete existing availability entries.
+- [ ] **Full Admin Dashboard** `/admin` — expanded admin observability and moderation layer. Four tabs:
+  - **Overview** — stat cards: total users, total reviews, total watchlist adds, movies in DB, active groups
+  - **Content** — most reviewed movies, avg rating distribution chart, genre breakdown (derived from watchlist + reviews data), top OTT platforms by watchlist presence
+  - **Reviews** — paginated table of all user reviews; filter by rating / date / reported; delete abusive or policy-violating reviews; soft-delete with reason log
+  - **Platforms** — OTT availability seeding form (search movie → pick platform → deep link → optional expiry); existing availability table with edit/delete
+  - Backend: `GET /api/admin/stats` (already defined), `GET /api/admin/reviews`, `DELETE /api/admin/reviews/{id}`, extend existing `/api/admin/platforms`
+  - Frontend: role-gated (`role === 'admin'`), redirect non-admins to home; reuse existing stat card components
 
 ---
 
@@ -62,12 +69,12 @@ group_suggestions        (id, group_id, movie_id, suggested_by → users.id, upv
 ```
 
 **Features:**
-- [ ] Create group → generates short invite code (e.g. `NINJA42`)
-- [ ] Join group via invite code
-- [ ] Group watchlist page `/groups/{groupId}` — movies added by any member, avatars showing who has/hasn't watched each
-- [ ] Add to group watchlist from movie detail page (alongside personal watchlist button)
-- [ ] Leaderboard — members ranked by % of group watchlist watched
-- [ ] "Suggest a movie" — propose + upvote/downvote; top suggestion auto-added
+- [x] Create group → generates short invite code (e.g. `NINJA42`)
+- [x] Join group via invite code
+- [x] Group watchlist page `/groups/{groupId}` — movies added by any member, avatars showing who has/hasn't watched each
+- [x] Add to group watchlist from movie detail page (alongside personal watchlist button)
+- [x] Leaderboard — members ranked by % of group watchlist watched
+- [x] "Suggest a movie" — propose + upvote/downvote; top suggestion auto-added
 - [ ] Notifications — "John added Inception to your group" (Firebase FCM, deferred to Phase 4)
 
 **Interview value:** multi-user data, invite flows, leaderboard aggregation, social product thinking — rare in portfolio projects.
@@ -102,9 +109,51 @@ group_suggestions        (id, group_id, movie_id, suggested_by → users.id, upv
 
 ---
 
+## Phase 3.5 — AI Features *(LLM-powered)*
+
+Core idea: use a large language model (Claude / OpenAI) to make movie discovery feel intelligent and personal. Every feature here is genuinely rare in portfolio projects and maps directly to senior product engineering interview conversations.
+
+**LLM provider:** Claude API (Anthropic) or OpenAI — abstracted behind an `AiService` interface so the provider can be swapped. API key in Railway env vars. Responses cached in Redis to minimise cost.
+
+### 1. Mood / Questionnaire-based Suggestions
+- [ ] Frontend: multi-step questionnaire — mood (happy/sad/thrilled/romantic…), genre, runtime preference, language, who you're watching with (alone/family/date/friends)
+- [ ] Backend: `POST /api/ai/suggest` — sends answers to LLM with a structured prompt; LLM returns 5 movie titles + reasons; backend searches TMDB for each and returns full `MovieSearchResult[]`
+- [ ] UI: dedicated `/discover` page with animated question cards; results shown as a movie grid with "Why we picked this" blurb per card
+- [ ] Redis cache key: `ai:suggest:{hash(answers)}` TTL 24h (same answers → same result, saves API cost)
+
+### 2. Natural Language / Emotion Search
+- [ ] Frontend: "Describe what you want to watch" free-text input on Search page (alongside existing keyword search); examples shown: "something like Interstellar but shorter", "a feel-good Hindi movie for a rainy Sunday"
+- [ ] Backend: `POST /api/ai/nl-search` — LLM interprets the query, extracts intent (genres, themes, mood, era, language), returns TMDB search terms; backend queries TMDB and returns results
+- [ ] UI: toggled input mode on SearchPage — "Keyword" vs "Describe it" tab; results look identical to normal search
+- [ ] Redis cache key: `ai:nlsearch:{hash(query)}` TTL 6h
+
+### 3. Share a Reel → Auto-add Movies to Wishlist
+- [ ] PWA Web Share Target — register app as a share target in `manifest.webmanifest`; when user shares an Instagram/YouTube reel URL to WatchMate, app opens at `/share-target?url=…`
+- [ ] Backend: `POST /api/ai/extract-movies` — fetches URL metadata (title, description, captions if available via yt-dlp or oEmbed); sends text to LLM to extract all movie names mentioned; searches TMDB for each; returns list of matched movies
+- [ ] Frontend: `/share-target` page — shows extracted movies with posters; user can tick which ones to add to watchlist or group watchlist; one-tap "Add All"
+- [ ] Graceful fallback: if URL extraction fails (private reel, no captions), show manual text input — "Paste the caption or description here"
+- [ ] Redis cache key: `ai:reel:{hash(url)}` TTL 1h
+
+### 4. AI Review Summary (Spoiler-free + Spoiler mode)
+- [ ] Data sources: TMDB reviews (`GET /movie/{id}/reviews`), Reddit search via Pushshift/Reddit API (`r/movies`, `r/india`, `r/bollywood`), user reviews from our own `reviews` table
+- [ ] Backend: `GET /api/ai/review-summary/{tmdbId}?spoilers=false|true` — aggregates review text, sends to LLM with prompt to summarise in ~150 words; two separate summaries generated (spoiler-free and full)
+- [ ] LLM prompt: "Summarise these reviews in 150 words. Mode: spoiler-free — do not reveal plot twists, endings, or deaths. Focus on tone, performances, and whether audiences enjoyed it."
+- [ ] Frontend: on MovieDetailPage, "AI Summary" card below the overview — toggle switch "Spoiler-free / Full summary"; blurred by default for full mode until toggled
+- [ ] Redis cache key: `ai:review-summary:{tmdbId}:free` / `ai:review-summary:{tmdbId}:full` TTL 48h (reviews don't change often)
+
+### 5. AI-powered "Because You Watched X" Recommendations
+- [ ] Backend: `GET /api/ai/recommendations` (auth required) — takes user's top 5 watched movies (by recency + rating), sends to LLM: "The user enjoyed [Movie A, B, C]. Recommend 8 movies they would like. Return only titles and a one-line reason."
+- [ ] Backend searches TMDB for each recommendation, returns `MovieSearchResult[]` with reason attached
+- [ ] Frontend: "Picked for You" shelf on HomePage (below trending, login-gated); each card shows the reason tooltip on hover
+- [ ] Refreshed when user marks a new movie as watched; Redis cache key: `ai:recs:{userId}` TTL 12h
+
+**Interview value:** LLM integration, prompt engineering, cost management (caching), Web Share Target API, multi-source data aggregation, graceful degradation — covers AI product thinking end-to-end.
+
+---
+
 ## Phase 4 — Platform Expansion
 
-- [ ] PWA manifest + service worker (do before native app)
+- [x] PWA manifest + service worker — `manifest.webmanifest`, `sw.js`, iOS/Android install guide on Features page
 - [ ] Pagination / infinite scroll on search results (currently page 1 only)
 - [ ] Push notifications via Firebase FCM (expiring content, group activity)
 - [ ] React Native mobile app (REST API already mobile-ready; add pagination first)
