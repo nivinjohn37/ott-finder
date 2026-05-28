@@ -116,25 +116,72 @@ public class TMDBService {
         return detail;
     }
 
-    public List<MovieSearchResult> getTrending(String region) {
+    public List<MovieSearchResult> getTrending(String region, String language) {
         String safeRegion = (region == null || region.isBlank()) ? "global" : region.toUpperCase();
-        String cacheKey = "tmdb:trending:" + safeRegion;
+        String safeLang   = (language == null || language.isBlank() || "all".equalsIgnoreCase(language))
+                ? "all" : language.toLowerCase();
+
+        String cacheKey = "tmdb:trending:" + safeRegion + ":" + safeLang;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             return deserializeList(cached, new TypeReference<>() {});
         }
 
-        UriComponentsBuilder builder = UriComponentsBuilder
-                .fromHttpUrl(baseUrl + "/trending/all/day")
-                .queryParam("api_key", apiKey)
-                .queryParam("language", "en-US");
-        if (!"GLOBAL".equals(safeRegion)) {
-            builder.queryParam("region", safeRegion);
+        List<MovieSearchResult> results;
+        if ("all".equals(safeLang)) {
+            // Use TMDB trending endpoint (supports region, not language)
+            UriComponentsBuilder builder = UriComponentsBuilder
+                    .fromHttpUrl(baseUrl + "/trending/all/day")
+                    .queryParam("api_key", apiKey)
+                    .queryParam("language", "en-US");
+            if (!"GLOBAL".equals(safeRegion)) builder.queryParam("region", safeRegion);
+            results = fetchAndMapResults(builder.toUriString());
+        } else {
+            // TMDB trending doesn't support original_language — use discover instead
+            results = fetchLanguageDiscover(safeLang);
         }
 
-        List<MovieSearchResult> results = fetchAndMapResults(builder.toUriString());
         if (!results.isEmpty()) cache(cacheKey, results, TRENDING_TTL);
         return results;
+    }
+
+    private List<MovieSearchResult> fetchLanguageDiscover(String language) {
+        List<MovieSearchResult> movies = fetchDiscover("movie", language);
+        List<MovieSearchResult> tv     = fetchDiscover("tv", language);
+        // Interleave: top 10 movies + top 10 TV, already sorted by popularity.desc from TMDB
+        List<MovieSearchResult> combined = new ArrayList<>();
+        combined.addAll(movies.stream().limit(10).toList());
+        combined.addAll(tv.stream().limit(10).toList());
+        return combined;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<MovieSearchResult> fetchDiscover(String mediaType, String language) {
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/discover/" + mediaType)
+                .queryParam("api_key", apiKey)
+                .queryParam("language", "en-US")
+                .queryParam("sort_by", "popularity.desc")
+                .queryParam("with_original_language", language)
+                .queryParam("page", 1)
+                .toUriString();
+        try {
+            Map<String, Object> response = fetchMap(url);
+            if (response == null || !response.containsKey("results")) return Collections.emptyList();
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+            return results.stream()
+                    .map(r -> {
+                        // Discover endpoints don't include media_type — inject it
+                        java.util.HashMap<String, Object> copy = new java.util.HashMap<>(r);
+                        copy.put("media_type", mediaType.equals("tv") ? "tv" : "movie");
+                        return copy;
+                    })
+                    .map(this::mapToSearchResult)
+                    .filter(Objects::nonNull)
+                    .toList();
+        } catch (Exception ex) {
+            log.error("TMDB discover failed type={} lang={}: {}", mediaType, language, ex.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     public List<MovieSearchResult> getGenreMovies(String genreName, String mediaType) {
