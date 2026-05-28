@@ -116,19 +116,23 @@ public class TMDBService {
         return detail;
     }
 
-    public List<MovieSearchResult> getTrending() {
-        String cacheKey = "tmdb:trending";
+    public List<MovieSearchResult> getTrending(String region) {
+        String safeRegion = (region == null || region.isBlank()) ? "global" : region.toUpperCase();
+        String cacheKey = "tmdb:trending:" + safeRegion;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             return deserializeList(cached, new TypeReference<>() {});
         }
 
-        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/trending/all/day")
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(baseUrl + "/trending/all/day")
                 .queryParam("api_key", apiKey)
-                .queryParam("language", "en-US")
-                .toUriString();
+                .queryParam("language", "en-US");
+        if (!"GLOBAL".equals(safeRegion)) {
+            builder.queryParam("region", safeRegion);
+        }
 
-        List<MovieSearchResult> results = fetchAndMapResults(url);
+        List<MovieSearchResult> results = fetchAndMapResults(builder.toUriString());
         if (!results.isEmpty()) cache(cacheKey, results, TRENDING_TTL);
         return results;
     }

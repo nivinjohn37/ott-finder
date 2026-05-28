@@ -114,8 +114,8 @@ public class MovieSearchService {
         return tmdbService.getGenreMovies(genreName, mediaType);
     }
 
-    public List<MovieSearchResult> getTrending() {
-        List<MovieSearchResult> trending = tmdbService.getTrending();
+    public List<MovieSearchResult> getTrending(String region) {
+        List<MovieSearchResult> trending = tmdbService.getTrending(region);
         CompletableFuture.runAsync(() -> persistNewMovies(trending), apiCallExecutor);
         return trending;
     }

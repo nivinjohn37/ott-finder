@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { TrendingUp, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTrending } from '@/hooks/useMovies'
+import { useRegion } from '@/context/RegionContext'
 import { HeroSection } from '@/components/movie/HeroSection'
 import { MovieGrid } from '@/components/movie/MovieGrid'
 import { SkeletonGrid } from '@/components/common/SkeletonCard'
@@ -12,9 +13,11 @@ import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
 import { useAuth } from '@/context/AuthContext'
 
 export function HomePage() {
-  const { data: trending, isLoading, isError } = useTrending()
+  const { region } = useRegion()
+  const { data: trending, isLoading, isError } = useTrending(region.code)
   const { items: recentlyViewed, clearAll } = useRecentlyViewed()
   const { user } = useAuth()
+  const trendingLabel = region.code === 'global' ? 'Trending Globally' : `Trending in ${region.label}`
 
   return (
     <div>
@@ -46,7 +49,7 @@ export function HomePage() {
               <div className="w-1 h-6 rounded-full bg-accent" />
               <h2 className="font-heading font-bold text-xl text-cinema-text flex items-center gap-2">
                 <TrendingUp size={20} className="text-accent" />
-                Trending Now
+                {trendingLabel}
               </h2>
             </div>
             <Link

@@ -10,10 +10,10 @@ export function useSearch(query: string) {
   })
 }
 
-export function useTrending() {
+export function useTrending(region?: string) {
   return useQuery({
-    queryKey: ['movies', 'trending'],
-    queryFn: getTrending,
+    queryKey: ['movies', 'trending', region ?? 'global'],
+    queryFn: () => getTrending(region),
     staleTime: 10 * 60 * 1000,
   })
 }

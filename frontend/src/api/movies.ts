@@ -6,8 +6,10 @@ export async function searchMovies(q: string): Promise<MovieSearchResult[]> {
   return res.data.data ?? []
 }
 
-export async function getTrending(): Promise<MovieSearchResult[]> {
-  const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/trending')
+export async function getTrending(region?: string): Promise<MovieSearchResult[]> {
+  const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/trending', {
+    params: region && region !== 'global' ? { region } : undefined,
+  })
   return res.data.data ?? []
 }
 

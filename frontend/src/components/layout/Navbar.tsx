@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck } from 'lucide-react'
+import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
+import { useRegion, REGIONS } from '@/context/RegionContext'
 import { useCurrentUser } from '@/hooks/useUser'
 import { SearchBar } from '@/components/movie/SearchBar'
 
@@ -11,10 +12,23 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [regionOpen, setRegionOpen] = useState(false)
+  const regionRef = useRef<HTMLDivElement>(null)
   const { user, signInWithGoogle, logout } = useAuth()
   const { theme, toggle } = useTheme()
+  const { region, setRegion } = useRegion()
   const { data: me } = useCurrentUser()
   const location = useLocation()
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (regionRef.current && !regionRef.current.contains(e.target as Node)) {
+        setRegionOpen(false)
+      }
+    }
+    if (regionOpen) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [regionOpen])
 
   const rafRef = useRef<number | null>(null)
   useEffect(() => {
@@ -77,6 +91,43 @@ export function Navbar() {
               >
                 <Search size={20} />
               </button>
+
+              {/* Region selector */}
+              <div ref={regionRef} className="relative">
+                <button
+                  onClick={() => setRegionOpen((v) => !v)}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-cinema-muted hover:text-cinema-text hover:bg-cinema-navy transition-colors text-sm font-body"
+                  aria-label="Select region"
+                >
+                  <span>{region.flag}</span>
+                  <span className="hidden sm:inline text-xs">{region.code === 'global' ? 'Global' : region.code}</span>
+                  <ChevronDown size={12} className={`transition-transform ${regionOpen ? 'rotate-180' : ''}`} />
+                </button>
+                <AnimatePresence>
+                  {regionOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-1 z-50 bg-cinema-navy border border-cinema-navy-border rounded-xl shadow-lg py-1 min-w-36 overflow-hidden"
+                    >
+                      {REGIONS.map((r) => (
+                        <button
+                          key={r.code}
+                          onClick={() => { setRegion(r); setRegionOpen(false) }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm font-body transition-colors hover:bg-cinema-surface ${
+                            region.code === r.code ? 'text-accent' : 'text-cinema-text'
+                          }`}
+                        >
+                          <span>{r.flag}</span>
+                          <span>{r.label}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <button
                 onClick={toggle}

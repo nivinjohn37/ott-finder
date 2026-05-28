@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { AuthProvider } from '@/context/AuthContext'
 import { ThemeProvider } from '@/context/ThemeContext'
+import { RegionProvider } from '@/context/RegionContext'
 import { queryClient } from '@/lib/queryClient'
 import { Layout } from '@/components/layout/Layout'
 import { HomePage } from '@/pages/HomePage'
@@ -21,6 +22,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+      <RegionProvider>
       <AuthProvider>
         <BrowserRouter>
           <Layout>
@@ -40,6 +42,7 @@ export function App() {
           </Layout>
         </BrowserRouter>
       </AuthProvider>
+      </RegionProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
