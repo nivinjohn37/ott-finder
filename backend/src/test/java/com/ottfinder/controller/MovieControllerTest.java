@@ -88,7 +88,7 @@ class MovieControllerTest {
 
     @Test
     void trending_returnsResults() throws Exception {
-        when(movieSearchService.getTrending(null)).thenReturn(Collections.emptyList());
+        when(movieSearchService.getTrending(null, null)).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/movies/trending"))
                 .andExpect(status().isOk())

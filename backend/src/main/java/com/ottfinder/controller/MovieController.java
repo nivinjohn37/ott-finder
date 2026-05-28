@@ -33,8 +33,9 @@ public class MovieController {
 
     @GetMapping("/trending")
     public ResponseEntity<ApiResponse<List<MovieSearchResult>>> trending(
-            @org.springframework.web.bind.annotation.RequestParam(required = false) String region) {
-        return ResponseEntity.ok(ApiResponse.success(movieSearchService.getTrending(region)));
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String language) {
+        return ResponseEntity.ok(ApiResponse.success(movieSearchService.getTrending(region, language)));
     }
 
     @GetMapping("/person/{personId}")
