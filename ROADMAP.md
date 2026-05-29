@@ -1,6 +1,6 @@
 # WatchMate — Product Roadmap
 
-Last updated: 2026-05-28
+Last updated: 2026-05-29
 
 **Goal:** Grow from MVP into a portfolio centrepiece for senior product engineering roles in Australia.
 
@@ -148,6 +148,41 @@ Core idea: use a large language model (Claude / OpenAI) to make movie discovery 
 - [ ] Refreshed when user marks a new movie as watched; Redis cache key: `ai:recs:{userId}` TTL 12h
 
 **Interview value:** LLM integration, prompt engineering, cost management (caching), Web Share Target API, multi-source data aggregation, graceful degradation — covers AI product thinking end-to-end.
+
+---
+
+## Phase 6 — JustWatch-inspired Discovery Features *(do last, polish layer)*
+
+Features identified by studying JustWatch India. Each adds discoverability and engagement without changing the core product. Do after Phase 5 when the product is stable.
+
+### 6a — Content Discovery Enhancements
+
+- [ ] **"Similar Titles" on movie detail** — `GET /api/movies/{id}/similar` → TMDB `/movie/{id}/recommendations`. Show as horizontal shelf below cast. Low effort, high value. Redis TTL 24h.
+- [ ] **Multiple trailers on detail page** — TMDB videos response already fetched; currently we display only the first trailer. Surface teaser + trailer + clip as tabs. No new API call needed.
+- [ ] **"Hidden Gems" shelf** — TMDB Discover with `vote_average.gte=7.5&vote_count.lte=5000&sort_by=vote_average.desc`. Add as a curated shelf on homepage or genre pages.
+- [ ] **"Other works by director/actor"** — already have ActorDrawer for cast; extend to show director's filmography shelf on detail page (links to filtered search, no new API needed).
+
+### 6b — "What's New" & "Coming Soon" Pages
+
+- [ ] **Coming Soon page** `/coming-soon` — TMDB `/movie/upcoming` + `/tv/on_the_air`. Show release date countdown badge per card. No JustWatch dependency. Redis TTL 6h.
+- [ ] **What's New page** `/new` — content newly added to each OTT platform. Requires scheduled job to diff JustWatch availability snapshots (complex). Phase 6b candidate; simpler fallback: TMDB `/movie/now_playing` + `/tv/airing_today` per region.
+
+### 6c — Streaming Charts
+
+- [ ] **Daily streaming chart** — rank all movies/shows by TMDB popularity score; run a daily scheduler to snapshot scores and compute rank delta vs. yesterday ("↑26 since yesterday"). Store in new `streaming_chart_snapshots` table.
+- [ ] **Rank badge on movie cards** — small chip on MovieCard showing `#12 ↑4` when in chart context.
+- [ ] **Charts page** `/charts` — top 50 movies + top 50 shows, with rank movement arrows and delta numbers.
+
+### 6d — Smarter Notifications
+
+- [ ] **"Notify me when available"** — users can flag a movie that's not yet on their preferred platform. When our availability data updates and that platform now has it, trigger a notification. Extends existing `ExpiringContentService` logic with a new `notification_type = 'new_availability'` (already defined in schema).
+- [ ] **"Notify me when free"** — variant of above: alert when a rent-only title lands on a subscription service. Requires tracking availability type (free vs. subscription) from JustWatch response — currently ignored.
+
+### 6e — Curated Editorial Lists
+
+- [ ] **Franchise "In Order" guides** — e.g. "MCU in chronological order", "Harry Potter in order". Store as manually seeded `curated_lists` table (id, name, description, ordered list of tmdbIds). `GET /api/lists/{slug}`. Frontend: `/lists/{slug}` page.
+- [ ] **"Best of" collections** — "Best Bollywood of 2024", "Top 10 Christopher Nolan Films". Same curated_lists table, admin-seeded via admin dashboard.
+- [ ] **Admin list management** — extend admin dashboard with a Lists tab: create/edit/reorder curated lists. No code on movie detail pages needed — lists are standalone discovery pages.
 
 ---
 
