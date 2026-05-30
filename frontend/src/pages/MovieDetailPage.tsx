@@ -147,8 +147,7 @@ export function MovieDetailPage() {
               )}
               {movie.releaseDate && (
                 <span className="inline-flex items-center gap-1 text-cinema-muted text-sm font-body">
-                  <Calendar size={13} />
-                  {new Date(movie.releaseDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  <Calendar size={13} /> {movie.releaseDate.slice(0, 4)}
                 </span>
               )}
               <span className="px-2 py-0.5 rounded border border-cinema-navy-border text-cinema-muted text-xs font-body uppercase flex items-center gap-1">
@@ -186,6 +185,13 @@ export function MovieDetailPage() {
                 </span>
               )}
             </div>
+
+            {movie.releaseDate && (
+              <p className="text-cinema-muted/70 text-xs font-body mb-4">
+                <span className="text-cinema-muted/50 uppercase tracking-wider mr-1.5">Release date</span>
+                {new Date(movie.releaseDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
 
             {movie.overview && (
               <p className="text-cinema-muted font-body text-sm leading-relaxed max-w-2xl mb-6">
