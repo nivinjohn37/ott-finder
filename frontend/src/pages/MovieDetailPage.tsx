@@ -147,7 +147,8 @@ export function MovieDetailPage() {
               )}
               {movie.releaseDate && (
                 <span className="inline-flex items-center gap-1 text-cinema-muted text-sm font-body">
-                  <Calendar size={13} /> {movie.releaseDate.slice(0, 4)}
+                  <Calendar size={13} />
+                  {new Date(movie.releaseDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               )}
               <span className="px-2 py-0.5 rounded border border-cinema-navy-border text-cinema-muted text-xs font-body uppercase flex items-center gap-1">
