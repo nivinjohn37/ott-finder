@@ -76,8 +76,13 @@ export async function getUserBadges(): Promise<BadgeDto[]> {
   return res.data.data ?? []
 }
 
-export async function getAdminReviews(page = 0): Promise<AdminReviewsPage> {
-  const res = await api.get<ApiResponse<AdminReviewsPage>>('/admin/reviews', { params: { page, size: 25 } })
+export async function getAdminReviews(
+  page = 0,
+  filters?: { ratingFilter?: number; reportedOnly?: boolean }
+): Promise<AdminReviewsPage> {
+  const res = await api.get<ApiResponse<AdminReviewsPage>>('/admin/reviews', {
+    params: { page, size: 25, ...filters },
+  })
   return res.data.data ?? { reviews: [], totalElements: 0, totalPages: 0, page: 0 }
 }
 

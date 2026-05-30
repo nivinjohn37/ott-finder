@@ -17,6 +17,7 @@ import com.ottfinder.entity.User;
 import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.OttPlatformRepository;
+import com.ottfinder.repository.ReviewLikeRepository;
 import com.ottfinder.repository.ReviewRepository;
 import com.ottfinder.repository.UserRepository;
 import com.ottfinder.repository.WatchGroupRepository;
@@ -28,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import java.util.stream.Collectors;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +50,7 @@ public class AdminController {
     private final OttPlatformRepository ottPlatformRepository;
     private final MovieAvailabilityRepository movieAvailabilityRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewLikeRepository reviewLikeRepository;
     private final WatchGroupRepository watchGroupRepository;
     private final MovieSearchService movieSearchService;
     private final StringRedisTemplate redisTemplate;
@@ -119,12 +122,31 @@ public class AdminController {
     public ResponseEntity<ApiResponse<AdminReviewsPage>> getReviews(
             @AuthenticationPrincipal FirebasePrincipal principal,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "25") int size) {
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "0") int ratingFilter,
+            @RequestParam(defaultValue = "false") boolean reportedOnly) {
         if (!isAdmin(principal)) {
             return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
         }
 
-        Page<Review> reviewPage = reviewRepository.findAllWithUserAndMovie(PageRequest.of(page, size));
+        PageRequest pageRequest = PageRequest.of(page, size);
+        Page<Review> reviewPage;
+        if (reportedOnly && ratingFilter > 0) {
+            reviewPage = reviewRepository.findReportedByRatingOrderByReportCount((short) ratingFilter, pageRequest);
+        } else if (reportedOnly) {
+            reviewPage = reviewRepository.findReportedOrderByReportCount(pageRequest);
+        } else if (ratingFilter > 0) {
+            reviewPage = reviewRepository.findByRatingWithUserAndMovie((short) ratingFilter, pageRequest);
+        } else {
+            reviewPage = reviewRepository.findAllWithUserAndMovie(pageRequest);
+        }
+
+        List<Long> reviewIds = reviewPage.getContent().stream().map(Review::getId).toList();
+        java.util.Map<Long, Long> likeCounts = reviewIds.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : reviewLikeRepository.countLikesByReviewIds(reviewIds).stream()
+                        .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+
         List<AdminReviewDto> reviews = reviewPage.getContent().stream()
                 .map(r -> new AdminReviewDto(
                         r.getId(),
@@ -134,7 +156,9 @@ public class AdminController {
                         r.getUser().getEmail(),
                         r.getRating(),
                         r.getNote(),
-                        r.getCreatedAt()
+                        r.getCreatedAt(),
+                        likeCounts.getOrDefault(r.getId(), 0L),
+                        r.getReportCount()
                 ))
                 .toList();
 

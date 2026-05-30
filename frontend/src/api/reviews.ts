@@ -17,3 +17,12 @@ export async function upsertReview(tmdbId: number, rating: number, note: string)
 export async function deleteReview(tmdbId: number): Promise<void> {
   await api.delete(`/movies/${tmdbId}/reviews`)
 }
+
+export async function likeReview(tmdbId: number, reviewId: number): Promise<{ liked: boolean; likeCount: number }> {
+  const res = await api.post<ApiResponse<{ liked: boolean; likeCount: number }>>(`/movies/${tmdbId}/reviews/${reviewId}/like`)
+  return res.data.data ?? { liked: false, likeCount: 0 }
+}
+
+export async function reportReview(tmdbId: number, reviewId: number): Promise<void> {
+  await api.post(`/movies/${tmdbId}/reviews/${reviewId}/report`)
+}

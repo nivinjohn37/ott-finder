@@ -77,10 +77,10 @@ export function useToggleBlacklist() {
   })
 }
 
-export function useAdminReviews(page: number) {
+export function useAdminReviews(page: number, filters?: { ratingFilter?: number; reportedOnly?: boolean }) {
   return useQuery({
-    queryKey: ['admin', 'reviews', page],
-    queryFn: () => getAdminReviews(page),
+    queryKey: ['admin', 'reviews', page, filters],
+    queryFn: () => getAdminReviews(page, filters),
     staleTime: 30 * 1000,
   })
 }

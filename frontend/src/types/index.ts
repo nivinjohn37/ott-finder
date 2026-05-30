@@ -109,6 +109,8 @@ export interface AdminReviewDto {
   rating: number
   note: string | null
   createdAt: string
+  likeCount: number
+  reportCount: number
 }
 
 export interface AdminReviewsPage {
@@ -144,6 +146,9 @@ export interface ReviewDto {
   createdAt: string
   updatedAt: string | null
   isOwn: boolean
+  likeCount: number
+  isLikedByMe: boolean
+  reportCount: number
 }
 
 export interface ReviewsResponse {

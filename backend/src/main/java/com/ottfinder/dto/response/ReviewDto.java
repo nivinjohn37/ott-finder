@@ -10,5 +10,8 @@ public record ReviewDto(
         String note,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        boolean isOwn
+        boolean isOwn,
+        long likeCount,
+        boolean isLikedByMe,
+        int reportCount
 ) {}

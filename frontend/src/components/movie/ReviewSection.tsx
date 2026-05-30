@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Star, Trash2, Loader2 } from 'lucide-react'
+import { Star, Trash2, Loader2, ThumbsUp, Flag } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { useReviews, useUpsertReview, useDeleteReview } from '@/hooks/useReviews'
+import { useReviews, useUpsertReview, useDeleteReview, useLikeReview, useReportReview } from '@/hooks/useReviews'
 import { getReviews } from '@/api/reviews'
 import type { ReviewDto } from '@/types'
 
@@ -14,6 +14,8 @@ export function ReviewSection({ tmdbId }: Props) {
   const { data, isLoading } = useReviews(tmdbId)
   const { mutateAsync: upsert, isPending: saving } = useUpsertReview(tmdbId)
   const { mutateAsync: remove, isPending: deleting } = useDeleteReview(tmdbId)
+  const { mutate: toggleLike } = useLikeReview(tmdbId)
+  const { mutate: report, isPending: reporting, variables: reportingId } = useReportReview(tmdbId)
 
   const [hovered, setHovered] = useState(0)
   const [selected, setSelected] = useState(0)
@@ -22,9 +24,8 @@ export function ReviewSection({ tmdbId }: Props) {
   const [nextPage, setNextPage] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(false)
+  const [reported, setReported] = useState<Set<number>>(new Set())
 
-  // Sync form from server whenever myReview changes (initial load, after submit, after delete)
-  // Using rating + note as deps means a background refetch with identical data causes no re-render
   const serverRating = data?.myReview?.rating ?? 0
   const serverNote = data?.myReview?.note ?? ''
   useEffect(() => {
@@ -56,9 +57,36 @@ export function ReviewSection({ tmdbId }: Props) {
     await upsert({ rating: selected, note })
   }
 
-  async function handleDelete() {
-    await remove()
+  function handleLike(reviewId: number) {
+    if (!user) return
+    toggleLike(reviewId, {
+      onSuccess: (result) => {
+        setExtraReviews(prev =>
+          prev.map(r => r.id === reviewId
+            ? { ...r, isLikedByMe: result.liked, likeCount: result.likeCount }
+            : r
+          )
+        )
+      },
+    })
   }
+
+  function handleReport(reviewId: number) {
+    if (!user || reported.has(reviewId)) return
+    report(reviewId, {
+      onSuccess: () => {
+        setReported(prev => new Set(prev).add(reviewId))
+        setExtraReviews(prev =>
+          prev.map(r => r.id === reviewId
+            ? { ...r, reportCount: r.reportCount + 1 }
+            : r
+          )
+        )
+      },
+    })
+  }
+
+  const allReviews = [...(data?.reviews ?? []), ...extraReviews]
 
   return (
     <div className="space-y-6">
@@ -96,8 +124,6 @@ export function ReviewSection({ tmdbId }: Props) {
           <p className="text-cinema-muted text-xs font-body font-semibold uppercase tracking-wider">
             {data?.myReview ? 'Your review' : 'Write a review'}
           </p>
-
-          {/* Star picker */}
           <div className="flex items-center gap-1">
             {[1, 2, 3, 4, 5].map((s) => (
               <button
@@ -110,11 +136,7 @@ export function ReviewSection({ tmdbId }: Props) {
               >
                 <Star
                   size={24}
-                  className={
-                    s <= (hovered || selected)
-                      ? 'text-yellow-400 fill-yellow-400'
-                      : 'text-cinema-muted/30'
-                  }
+                  className={s <= (hovered || selected) ? 'text-yellow-400 fill-yellow-400' : 'text-cinema-muted/30'}
                 />
               </button>
             ))}
@@ -124,8 +146,6 @@ export function ReviewSection({ tmdbId }: Props) {
               </span>
             )}
           </div>
-
-          {/* Note */}
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -133,7 +153,6 @@ export function ReviewSection({ tmdbId }: Props) {
             rows={2}
             className="w-full px-3 py-2 bg-cinema-surface border border-cinema-navy-border rounded-lg text-cinema-text font-body text-sm placeholder:text-cinema-muted/40 focus:outline-none focus:border-accent/60 resize-none"
           />
-
           <div className="flex items-center gap-3">
             <button
               onClick={handleSubmit}
@@ -145,7 +164,7 @@ export function ReviewSection({ tmdbId }: Props) {
             </button>
             {data?.myReview && (
               <button
-                onClick={handleDelete}
+                onClick={() => remove()}
                 disabled={deleting}
                 className="p-2 rounded-lg text-cinema-muted hover:text-red-400 transition-colors"
                 title="Delete review"
@@ -156,16 +175,22 @@ export function ReviewSection({ tmdbId }: Props) {
           </div>
         </div>
       ) : (
-        <p className="text-cinema-muted text-sm font-body italic">
-          Sign in to leave a review.
-        </p>
+        <p className="text-cinema-muted text-sm font-body italic">Sign in to leave a review.</p>
       )}
 
       {/* Review list */}
-      {(data?.reviews ?? []).length > 0 && (
+      {allReviews.length > 0 && (
         <div className="space-y-3">
-          {[...(data!.reviews), ...extraReviews].map((r) => (
-            <ReviewCard key={r.id} review={r} />
+          {allReviews.map((r) => (
+            <ReviewCard
+              key={r.id}
+              review={r}
+              isLoggedIn={!!user}
+              isReported={reported.has(r.id)}
+              isReporting={reporting && reportingId === r.id}
+              onLike={() => handleLike(r.id)}
+              onReport={() => handleReport(r.id)}
+            />
           ))}
           {hasMore && (
             <button
@@ -186,9 +211,24 @@ export function ReviewSection({ tmdbId }: Props) {
   )
 }
 
-function ReviewCard({ review }: { review: ReviewDto }) {
+function ReviewCard({
+  review,
+  isLoggedIn,
+  isReported,
+  isReporting,
+  onLike,
+  onReport,
+}: {
+  review: ReviewDto
+  isLoggedIn: boolean
+  isReported: boolean
+  isReporting: boolean
+  onLike: () => void
+  onReport: () => void
+}) {
   return (
-    <div className={`rounded-xl border p-4 space-y-2 ${review.isOwn ? 'border-accent/30 bg-accent/5' : 'border-cinema-navy-border bg-cinema-navy'}`}>
+    <div className={`rounded-xl border p-4 space-y-2.5 ${review.isOwn ? 'border-accent/30 bg-accent/5' : 'border-cinema-navy-border bg-cinema-navy'}`}>
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full accent-gradient flex items-center justify-center text-white text-xs font-heading font-bold">
@@ -201,24 +241,60 @@ function ReviewCard({ review }: { review: ReviewDto }) {
         </div>
         <div className="flex items-center gap-0.5">
           {[1, 2, 3, 4, 5].map((s) => (
-            <Star
-              key={s}
-              size={13}
-              className={s <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-cinema-muted/20'}
-            />
+            <Star key={s} size={13} className={s <= review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-cinema-muted/20'} />
           ))}
         </div>
       </div>
+
+      {/* Review text */}
       {review.note && (
         <p className="text-cinema-muted text-sm font-body leading-relaxed">{review.note}</p>
       )}
-      <div className="flex items-center gap-2">
-        <p className="text-cinema-muted/40 text-xs font-body">
-          {new Date(review.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </p>
-        {review.updatedAt &&
-          new Date(review.updatedAt).getTime() - new Date(review.createdAt).getTime() > 60_000 && (
-          <span className="text-cinema-muted/40 text-xs font-body italic">(edited)</span>
+
+      {/* Footer: date + actions */}
+      <div className="flex items-center justify-between pt-0.5">
+        <div className="flex items-center gap-2">
+          <p className="text-cinema-muted/40 text-xs font-body">
+            {new Date(review.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
+          {review.updatedAt &&
+            new Date(review.updatedAt).getTime() - new Date(review.createdAt).getTime() > 60_000 && (
+            <span className="text-cinema-muted/40 text-xs font-body italic">(edited)</span>
+          )}
+        </div>
+
+        {/* Like + Report — only for other people's reviews */}
+        {!review.isOwn && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onLike}
+              disabled={!isLoggedIn}
+              title={isLoggedIn ? (review.isLikedByMe ? 'Unlike' : 'Like') : 'Sign in to like'}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-body transition-colors disabled:cursor-not-allowed ${
+                review.isLikedByMe
+                  ? 'text-accent bg-accent/10'
+                  : 'text-cinema-muted/60 hover:text-cinema-text hover:bg-cinema-surface'
+              }`}
+            >
+              <ThumbsUp size={12} className={review.isLikedByMe ? 'fill-accent' : ''} />
+              {review.likeCount > 0 && <span>{review.likeCount}</span>}
+            </button>
+
+            {isLoggedIn && !isReported && (
+              <button
+                onClick={onReport}
+                disabled={isReporting}
+                title="Report as inappropriate"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-body text-cinema-muted/40 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              >
+                {isReporting ? <Loader2 size={12} className="animate-spin" /> : <Flag size={12} />}
+              </button>
+            )}
+
+            {isReported && (
+              <span className="px-2 py-1 text-xs font-body text-red-400/60 italic">Reported</span>
+            )}
+          </div>
         )}
       </div>
     </div>

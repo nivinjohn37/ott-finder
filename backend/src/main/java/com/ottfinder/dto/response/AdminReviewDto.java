@@ -10,5 +10,7 @@ public record AdminReviewDto(
         String userEmail,
         int rating,
         String note,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        long likeCount,
+        int reportCount
 ) {}

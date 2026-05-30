@@ -3,7 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import {
   Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2,
   ShieldCheck, Database, X, Star, Ban, RotateCcw, Trash2, BarChart2,
-  MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Group,
+  MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Group, Flag,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -357,36 +357,104 @@ function ContentTab() {
 
 // ─── Reviews tab ──────────────────────────────────────────────────────────────
 
+const RATING_OPTIONS = [0, 1, 2, 3, 4, 5]
+
 function ReviewsTab() {
   const [page, setPage] = useState(0)
-  const { data, isLoading } = useAdminReviews(page)
+  const [ratingFilter, setRatingFilter] = useState(0)
+  const [reportedOnly, setReportedOnly] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const filters = {
+    ...(ratingFilter > 0 && { ratingFilter }),
+    ...(reportedOnly && { reportedOnly }),
+  }
+  const { data, isLoading } = useAdminReviews(page, filters)
   const { mutate: deleteReview, isPending: deleting, variables: deletingId } = useDeleteAdminReview()
+
+  function applyFilter(newRating: number, newReported: boolean) {
+    setPage(0)
+    setRatingFilter(newRating)
+    setReportedOnly(newReported)
+  }
+
+  const displayed = search.trim()
+    ? (data?.reviews ?? []).filter(r =>
+        r.movieTitle.toLowerCase().includes(search.toLowerCase()) ||
+        r.userDisplayName.toLowerCase().includes(search.toLowerCase()) ||
+        r.userEmail.toLowerCase().includes(search.toLowerCase())
+      )
+    : (data?.reviews ?? [])
 
   return (
     <div className="space-y-4">
       <SectionHeading icon={<MessageSquare size={16} />} title="All Reviews" />
 
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Rating chips */}
+        <div className="flex items-center gap-1">
+          {RATING_OPTIONS.map(r => (
+            <button
+              key={r}
+              onClick={() => applyFilter(r, reportedOnly)}
+              className={`px-2.5 py-1 rounded-full text-xs font-body font-medium transition-colors ${
+                ratingFilter === r
+                  ? 'bg-accent text-white'
+                  : 'bg-cinema-navy border border-cinema-navy-border text-cinema-muted hover:text-cinema-text'
+              }`}
+            >
+              {r === 0 ? 'All' : '★'.repeat(r)}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-px h-5 bg-cinema-navy-border" />
+
+        {/* Reported toggle */}
+        <button
+          onClick={() => applyFilter(ratingFilter, !reportedOnly)}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-body font-medium transition-colors ${
+            reportedOnly
+              ? 'bg-red-400/15 text-red-400 border border-red-400/30'
+              : 'bg-cinema-navy border border-cinema-navy-border text-cinema-muted hover:text-cinema-text'
+          }`}
+        >
+          <Flag size={11} /> Reported only
+        </button>
+
+        {/* Search */}
+        <div className="ml-auto">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search movie or user…"
+            className="px-3 py-1.5 bg-cinema-surface border border-cinema-navy-border rounded-lg text-cinema-text font-body text-xs placeholder:text-cinema-muted/50 focus:outline-none focus:border-accent/60 w-44"
+          />
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 size={24} className="text-accent animate-spin" />
         </div>
-      ) : !data?.reviews.length ? (
-        <p className="text-cinema-muted/60 text-sm font-body py-8 text-center">No reviews yet.</p>
+      ) : !displayed.length ? (
+        <p className="text-cinema-muted/60 text-sm font-body py-8 text-center">No reviews match these filters.</p>
       ) : (
         <>
-          <div className="rounded-xl border border-cinema-navy-border overflow-hidden">
+          <div className="rounded-xl border border-cinema-navy-border overflow-x-auto">
             <table className="w-full text-sm font-body">
               <thead className="bg-cinema-navy border-b border-cinema-navy-border">
                 <tr>
-                  {['Movie', 'User', 'Rating', 'Review', 'Date', ''].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-cinema-muted/60 text-xs font-semibold uppercase tracking-wider">
+                  {['Movie', 'User', 'Rating', 'Review', 'Likes', 'Reports', 'Date', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-cinema-muted/60 text-xs font-semibold uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-cinema-navy-border bg-cinema-surface/20">
-                {data.reviews.map((r) => (
+                {displayed.map((r) => (
                   <ReviewRow
                     key={r.id}
                     review={r}
@@ -399,10 +467,10 @@ function ReviewsTab() {
           </div>
 
           {/* Pagination */}
-          {data.totalPages > 1 && (
+          {(data?.totalPages ?? 0) > 1 && !search && (
             <div className="flex items-center justify-between pt-2">
               <span className="text-cinema-muted/60 text-xs font-body">
-                {data.totalElements} total · page {page + 1} of {data.totalPages}
+                {data!.totalElements} total · page {page + 1} of {data!.totalPages}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -413,8 +481,8 @@ function ReviewsTab() {
                   <ChevronLeft size={16} />
                 </button>
                 <button
-                  onClick={() => setPage(p => Math.min(data.totalPages - 1, p + 1))}
-                  disabled={page >= data.totalPages - 1}
+                  onClick={() => setPage(p => Math.min(data!.totalPages - 1, p + 1))}
+                  disabled={page >= data!.totalPages - 1}
                   className="p-1.5 rounded-lg border border-cinema-navy-border text-cinema-muted hover:text-cinema-text disabled:opacity-30 transition-colors"
                 >
                   <ChevronRight size={16} />
@@ -438,7 +506,7 @@ function ReviewRow({
   isDeleting: boolean
 }) {
   return (
-    <tr className="hover:bg-cinema-surface/40 transition-colors">
+    <tr className={`hover:bg-cinema-surface/40 transition-colors ${review.reportCount > 0 ? 'bg-red-400/5' : ''}`}>
       <td className="px-4 py-3 max-w-[160px]">
         <Link
           to={`/movie/${review.movieTmdbId}`}
@@ -452,14 +520,28 @@ function ReviewRow({
         <p className="text-cinema-text text-xs font-medium truncate">{review.userDisplayName}</p>
         <p className="text-cinema-muted/50 text-xs truncate">{review.userEmail}</p>
       </td>
-      <td className="px-4 py-3">
-        <span className="inline-flex items-center gap-0.5 text-yellow-400 font-body font-semibold text-sm">
-          {'★'.repeat(review.rating)}
-          <span className="text-cinema-muted/40 ml-0.5 text-xs">{'☆'.repeat(5 - review.rating)}</span>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <span className="text-yellow-400 font-body font-semibold text-sm">{'★'.repeat(review.rating)}</span>
+        <span className="text-cinema-muted/30 text-sm">{'☆'.repeat(5 - review.rating)}</span>
+      </td>
+      <td className="px-4 py-3 max-w-[200px]">
+        <p className="text-cinema-muted text-xs line-clamp-2">
+          {review.note ?? <span className="italic opacity-40">No text</span>}
+        </p>
+      </td>
+      <td className="px-4 py-3 text-center">
+        <span className="text-cinema-muted text-xs font-body font-medium">
+          {review.likeCount > 0 ? `👍 ${review.likeCount}` : '—'}
         </span>
       </td>
-      <td className="px-4 py-3 max-w-[240px]">
-        <p className="text-cinema-muted text-xs line-clamp-2">{review.note ?? <span className="italic opacity-40">No text</span>}</p>
+      <td className="px-4 py-3 text-center">
+        {review.reportCount > 0 ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-400/15 text-red-400 text-xs font-body font-semibold">
+            <Flag size={10} /> {review.reportCount}
+          </span>
+        ) : (
+          <span className="text-cinema-muted/30 text-xs">—</span>
+        )}
       </td>
       <td className="px-4 py-3 text-cinema-muted/60 text-xs whitespace-nowrap">
         {new Date(review.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
