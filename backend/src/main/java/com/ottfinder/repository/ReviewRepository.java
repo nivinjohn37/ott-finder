@@ -27,4 +27,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Object[]> getAggregateByMovieTmdbId(@Param("tmdbId") Integer tmdbId);
 
     long countByUserId(Long userId);
+
+    @Query(value = "SELECT r FROM Review r JOIN FETCH r.user JOIN FETCH r.movie ORDER BY r.createdAt DESC",
+           countQuery = "SELECT COUNT(r) FROM Review r")
+    Page<Review> findAllWithUserAndMovie(Pageable pageable);
+
+    @Query("SELECT r.movie.tmdbId, r.movie.title, COUNT(r), AVG(r.rating) FROM Review r GROUP BY r.movie.tmdbId, r.movie.title ORDER BY COUNT(r) DESC")
+    List<Object[]> findTopReviewedMovies(Pageable pageable);
+
+    @Query("SELECT r.rating, COUNT(r) FROM Review r GROUP BY r.rating ORDER BY r.rating ASC")
+    List<Object[]> findRatingDistribution();
 }

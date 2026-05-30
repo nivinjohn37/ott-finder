@@ -96,6 +96,32 @@ export interface AdminStats {
   totalWatchlistEntries: number
   totalMoviesInDb: number
   totalPlatforms: number
+  totalReviews: number
+  activeGroups: number
+}
+
+export interface AdminReviewDto {
+  id: number
+  movieTmdbId: number
+  movieTitle: string
+  userDisplayName: string
+  userEmail: string
+  rating: number
+  note: string | null
+  createdAt: string
+}
+
+export interface AdminReviewsPage {
+  reviews: AdminReviewDto[]
+  totalElements: number
+  totalPages: number
+  page: number
+}
+
+export interface AdminContentStats {
+  topReviewedMovies: { tmdbId: number; title: string; reviewCount: number; avgRating: number }[]
+  ratingDistribution: { rating: number; count: number }[]
+  topPlatforms: { displayName: string; count: number }[]
 }
 
 export interface AdminUserDto {

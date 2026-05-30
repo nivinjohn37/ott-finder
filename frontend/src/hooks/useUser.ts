@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { deleteAvailability, getAdminPlatforms, getAdminStats, getAdminUsers, getMovieAvailability, getUserBadges, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
+import { deleteAdminReview, deleteAvailability, getAdminContentStats, getAdminPlatforms, getAdminReviews, getAdminStats, getAdminUsers, getMovieAvailability, getUserBadges, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
 import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
@@ -74,6 +74,33 @@ export function useToggleBlacklist() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
     },
+  })
+}
+
+export function useAdminReviews(page: number) {
+  return useQuery({
+    queryKey: ['admin', 'reviews', page],
+    queryFn: () => getAdminReviews(page),
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useDeleteAdminReview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => deleteAdminReview(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'reviews'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
+  })
+}
+
+export function useAdminContentStats() {
+  return useQuery({
+    queryKey: ['admin', 'content-stats'],
+    queryFn: getAdminContentStats,
+    staleTime: 5 * 60 * 1000,
   })
 }
 

@@ -1,16 +1,35 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Navigate } from 'react-router-dom'
-import { Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2, ShieldCheck, Database, X, Star, Ban, RotateCcw, Trash2 } from 'lucide-react'
+import { Navigate, Link } from 'react-router-dom'
+import {
+  Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2,
+  ShieldCheck, Database, X, Star, Ban, RotateCcw, Trash2, BarChart2,
+  MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Group,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers, useSeedAvailability, useToggleBlacklist, useMovieAvailability, useDeleteAvailability } from '@/hooks/useUser'
+import {
+  useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers,
+  useSeedAvailability, useToggleBlacklist, useMovieAvailability,
+  useDeleteAvailability, useAdminReviews, useDeleteAdminReview,
+  useAdminContentStats,
+} from '@/hooks/useUser'
 import { searchMovies } from '@/api/movies'
-import type { AdminUserDto, MovieSearchResult } from '@/types'
+import type { AdminUserDto, AdminReviewDto, MovieSearchResult } from '@/types'
+
+type Tab = 'overview' | 'content' | 'reviews' | 'platforms'
+
+const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
+  { id: 'overview',  label: 'Overview',  icon: <Database size={15} /> },
+  { id: 'content',   label: 'Content',   icon: <BarChart2 size={15} /> },
+  { id: 'reviews',   label: 'Reviews',   icon: <MessageSquare size={15} /> },
+  { id: 'platforms', label: 'Platforms', icon: <Tv2 size={15} /> },
+]
 
 export function AdminPage() {
   const { user } = useAuth()
   const { data: me, isLoading: meLoading } = useCurrentUser()
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   if (!user || (!meLoading && me?.role !== 'admin')) {
     return <Navigate to="/" replace />
@@ -25,9 +44,9 @@ export function AdminPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 sm:py-14 space-y-10">
+    <div className="max-w-5xl mx-auto px-4 py-10 sm:py-14">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div className="mb-8" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center gap-3 mb-1">
           <ShieldCheck size={22} className="text-accent" />
           <h1 className="font-heading font-bold text-2xl text-cinema-text">Admin Dashboard</h1>
@@ -35,69 +54,86 @@ export function AdminPage() {
         <p className="text-cinema-muted font-body text-sm ml-9">Logged in as {me?.email}</p>
       </motion.div>
 
-      {/* Stats */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
-        <SectionHeading icon={<Database size={16} />} title="Platform Stats" />
-        <StatsGrid />
-      </motion.div>
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-8 border-b border-cinema-navy-border overflow-x-auto scrollbar-hide">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-body font-medium whitespace-nowrap border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? 'border-accent text-accent'
+                : 'border-transparent text-cinema-muted hover:text-cinema-text'
+            }`}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* OTT Seeding */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
-        <SectionHeading icon={<Tv2 size={16} />} title="Seed OTT Availability" />
-        <p className="text-cinema-muted/60 text-xs font-body mb-4">
-          Manually add platform availability for movies JustWatch misses (e.g. Indian regional films).
-        </p>
-        <SeedForm />
-      </motion.div>
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          {activeTab === 'overview'  && <OverviewTab />}
+          {activeTab === 'content'   && <ContentTab />}
+          {activeTab === 'reviews'   && <ReviewsTab />}
+          {activeTab === 'platforms' && <PlatformsTab />}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }
 
-function SectionHeading({ icon, title }: { icon: ReactNode; title: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-4">
-      <div className="w-1 h-5 rounded-full bg-accent" />
-      <span className="text-cinema-muted">{icon}</span>
-      <h2 className="font-heading font-semibold text-cinema-text text-base">{title}</h2>
-    </div>
-  )
-}
+// ─── Overview tab ─────────────────────────────────────────────────────────────
 
-function StatsGrid() {
+function OverviewTab() {
   const { data: stats, isLoading } = useAdminStats()
   const [showUsers, setShowUsers] = useState(false)
 
   const cards = [
-    { icon: <Users size={18} />, label: 'Total Users', value: stats?.totalUsers, clickable: true, onClick: () => setShowUsers(true) },
-    { icon: <Bookmark size={18} />, label: 'Watchlist Entries', value: stats?.totalWatchlistEntries, clickable: false },
-    { icon: <Film size={18} />, label: 'Movies in DB', value: stats?.totalMoviesInDb, clickable: false },
-    { icon: <Tv2 size={18} />, label: 'OTT Platforms', value: stats?.totalPlatforms, clickable: false },
+    { icon: <Users size={18} />,    label: 'Total Users',       value: stats?.totalUsers,           clickable: true,  onClick: () => setShowUsers(true) },
+    { icon: <Bookmark size={18} />, label: 'Watchlist Entries', value: stats?.totalWatchlistEntries, clickable: false, onClick: undefined },
+    { icon: <Film size={18} />,     label: 'Movies in DB',      value: stats?.totalMoviesInDb,       clickable: false, onClick: undefined },
+    { icon: <Tv2 size={18} />,      label: 'OTT Platforms',     value: stats?.totalPlatforms,        clickable: false, onClick: undefined },
+    { icon: <MessageSquare size={18} />, label: 'Total Reviews', value: stats?.totalReviews,         clickable: false, onClick: undefined },
+    { icon: <Group size={18} />,    label: 'Active Groups',     value: stats?.activeGroups,          clickable: false, onClick: undefined },
   ]
 
   return (
-    <>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {cards.map(({ icon, label, value, clickable, onClick }) => (
-          <div
-            key={label}
-            onClick={onClick}
-            className={`bg-cinema-navy rounded-xl border border-cinema-navy-border p-4 space-y-2 ${clickable ? 'cursor-pointer hover:border-accent/40 hover:bg-cinema-navy-hover transition-colors' : ''}`}
-          >
-            <div className="text-cinema-muted">{icon}</div>
-            <div className="font-heading font-bold text-2xl text-cinema-text">
-              {isLoading ? '—' : value?.toLocaleString() ?? '—'}
+    <div className="space-y-8">
+      <div>
+        <SectionHeading icon={<Database size={16} />} title="Platform Stats" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {cards.map(({ icon, label, value, clickable, onClick }) => (
+            <div
+              key={label}
+              onClick={onClick}
+              className={`bg-cinema-navy rounded-xl border border-cinema-navy-border p-4 space-y-2 ${
+                clickable ? 'cursor-pointer hover:border-accent/40 hover:bg-cinema-navy-hover transition-colors' : ''
+              }`}
+            >
+              <div className="text-cinema-muted">{icon}</div>
+              <div className="font-heading font-bold text-2xl text-cinema-text">
+                {isLoading ? '—' : value?.toLocaleString() ?? '—'}
+              </div>
+              <div className="text-cinema-muted/60 text-xs font-body">
+                {label}{clickable && <span className="ml-1 text-accent/50">↗</span>}
+              </div>
             </div>
-            <div className="text-cinema-muted/60 text-xs font-body">
-              {label}{clickable && <span className="ml-1 text-accent/50">↗</span>}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <AnimatePresence>
         {showUsers && <UserListModal onClose={() => setShowUsers(false)} />}
       </AnimatePresence>
-    </>
+    </div>
   )
 }
 
@@ -206,6 +242,253 @@ function UserRow({ user }: { user: AdminUserDto }) {
         )}
       </td>
     </tr>
+  )
+}
+
+// ─── Content tab ──────────────────────────────────────────────────────────────
+
+function ContentTab() {
+  const { data, isLoading } = useAdminContentStats()
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 size={24} className="text-accent animate-spin" />
+      </div>
+    )
+  }
+
+  const totalRatings = data?.ratingDistribution.reduce((sum, b) => sum + b.count, 0) ?? 0
+  const maxReviews = Math.max(...(data?.topReviewedMovies.map(m => m.reviewCount) ?? [1]), 1)
+  const maxPlatform = Math.max(...(data?.topPlatforms.map(p => p.count) ?? [1]), 1)
+
+  return (
+    <div className="space-y-10">
+      {/* Most reviewed movies */}
+      <div>
+        <SectionHeading icon={<Film size={16} />} title="Most Reviewed Movies" />
+        {!data?.topReviewedMovies.length ? (
+          <p className="text-cinema-muted/60 text-sm font-body">No reviews yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {data.topReviewedMovies.map((movie, i) => (
+              <div key={movie.tmdbId} className="flex items-center gap-3">
+                <span className="text-cinema-muted/40 font-body text-xs w-5 text-right shrink-0">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <Link
+                      to={`/movie/${movie.tmdbId}`}
+                      className="text-cinema-text font-body text-sm font-medium truncate hover:text-accent transition-colors"
+                    >
+                      {movie.title}
+                    </Link>
+                    <span className="text-cinema-muted/60 text-xs font-body shrink-0">
+                      {movie.reviewCount} review{movie.reviewCount !== 1 ? 's' : ''} · ★ {movie.avgRating.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-cinema-surface overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-accent/60"
+                      style={{ width: `${(movie.reviewCount / maxReviews) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Rating distribution */}
+      <div>
+        <SectionHeading icon={<Star size={16} />} title="Rating Distribution" />
+        {!data?.ratingDistribution.length ? (
+          <p className="text-cinema-muted/60 text-sm font-body">No reviews yet.</p>
+        ) : (
+          <div className="space-y-2 max-w-md">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const bucket = data.ratingDistribution.find(b => b.rating === star)
+              const count = bucket?.count ?? 0
+              const pct = totalRatings > 0 ? (count / totalRatings) * 100 : 0
+              return (
+                <div key={star} className="flex items-center gap-3">
+                  <span className="text-cinema-muted text-sm font-body w-10 shrink-0">
+                    {'★'.repeat(star)}
+                  </span>
+                  <div className="flex-1 h-2 rounded-full bg-cinema-surface overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-yellow-400/70 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="text-cinema-muted/60 text-xs font-body w-8 text-right shrink-0">{count}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Top platforms */}
+      <div>
+        <SectionHeading icon={<Tv2 size={16} />} title="OTT Platforms by Availability" />
+        {!data?.topPlatforms.length ? (
+          <p className="text-cinema-muted/60 text-sm font-body">No availability data yet.</p>
+        ) : (
+          <div className="space-y-2 max-w-md">
+            {data.topPlatforms.map((p) => (
+              <div key={p.displayName} className="flex items-center gap-3">
+                <span className="text-cinema-text font-body text-sm w-32 truncate shrink-0">{p.displayName}</span>
+                <div className="flex-1 h-2 rounded-full bg-cinema-surface overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent/60"
+                    style={{ width: `${(p.count / maxPlatform) * 100}%` }}
+                  />
+                </div>
+                <span className="text-cinema-muted/60 text-xs font-body w-8 text-right shrink-0">{p.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Reviews tab ──────────────────────────────────────────────────────────────
+
+function ReviewsTab() {
+  const [page, setPage] = useState(0)
+  const { data, isLoading } = useAdminReviews(page)
+  const { mutate: deleteReview, isPending: deleting, variables: deletingId } = useDeleteAdminReview()
+
+  return (
+    <div className="space-y-4">
+      <SectionHeading icon={<MessageSquare size={16} />} title="All Reviews" />
+
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 size={24} className="text-accent animate-spin" />
+        </div>
+      ) : !data?.reviews.length ? (
+        <p className="text-cinema-muted/60 text-sm font-body py-8 text-center">No reviews yet.</p>
+      ) : (
+        <>
+          <div className="rounded-xl border border-cinema-navy-border overflow-hidden">
+            <table className="w-full text-sm font-body">
+              <thead className="bg-cinema-navy border-b border-cinema-navy-border">
+                <tr>
+                  {['Movie', 'User', 'Rating', 'Review', 'Date', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-cinema-muted/60 text-xs font-semibold uppercase tracking-wider">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-cinema-navy-border bg-cinema-surface/20">
+                {data.reviews.map((r) => (
+                  <ReviewRow
+                    key={r.id}
+                    review={r}
+                    onDelete={() => deleteReview(r.id)}
+                    isDeleting={deleting && deletingId === r.id}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {data.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-cinema-muted/60 text-xs font-body">
+                {data.totalElements} total · page {page + 1} of {data.totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="p-1.5 rounded-lg border border-cinema-navy-border text-cinema-muted hover:text-cinema-text disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(data.totalPages - 1, p + 1))}
+                  disabled={page >= data.totalPages - 1}
+                  className="p-1.5 rounded-lg border border-cinema-navy-border text-cinema-muted hover:text-cinema-text disabled:opacity-30 transition-colors"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function ReviewRow({
+  review,
+  onDelete,
+  isDeleting,
+}: {
+  review: AdminReviewDto
+  onDelete: () => void
+  isDeleting: boolean
+}) {
+  return (
+    <tr className="hover:bg-cinema-surface/40 transition-colors">
+      <td className="px-4 py-3 max-w-[160px]">
+        <Link
+          to={`/movie/${review.movieTmdbId}`}
+          className="text-cinema-text text-sm font-medium hover:text-accent transition-colors flex items-center gap-1 truncate"
+        >
+          {review.movieTitle}
+          <ExternalLink size={11} className="shrink-0 opacity-40" />
+        </Link>
+      </td>
+      <td className="px-4 py-3 max-w-[140px]">
+        <p className="text-cinema-text text-xs font-medium truncate">{review.userDisplayName}</p>
+        <p className="text-cinema-muted/50 text-xs truncate">{review.userEmail}</p>
+      </td>
+      <td className="px-4 py-3">
+        <span className="inline-flex items-center gap-0.5 text-yellow-400 font-body font-semibold text-sm">
+          {'★'.repeat(review.rating)}
+          <span className="text-cinema-muted/40 ml-0.5 text-xs">{'☆'.repeat(5 - review.rating)}</span>
+        </span>
+      </td>
+      <td className="px-4 py-3 max-w-[240px]">
+        <p className="text-cinema-muted text-xs line-clamp-2">{review.note ?? <span className="italic opacity-40">No text</span>}</p>
+      </td>
+      <td className="px-4 py-3 text-cinema-muted/60 text-xs whitespace-nowrap">
+        {new Date(review.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+      </td>
+      <td className="px-4 py-3">
+        <button
+          onClick={onDelete}
+          disabled={isDeleting}
+          title="Delete review"
+          className="p-1.5 rounded-lg text-cinema-muted hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-40"
+        >
+          {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+// ─── Platforms tab ────────────────────────────────────────────────────────────
+
+function PlatformsTab() {
+  return (
+    <div className="space-y-2">
+      <SectionHeading icon={<Tv2 size={16} />} title="Seed OTT Availability" />
+      <p className="text-cinema-muted/60 text-xs font-body mb-4">
+        Manually add platform availability for movies JustWatch misses (e.g. Indian regional films).
+      </p>
+      <SeedForm />
+    </div>
   )
 }
 
@@ -323,7 +606,6 @@ function SeedForm() {
           </button>
         </div>
 
-        {/* Results */}
         {results.length > 0 && !selected && (
           <div className="mt-2 rounded-lg border border-cinema-navy-border overflow-hidden divide-y divide-cinema-navy-border">
             {results.map((r) => (
@@ -348,7 +630,6 @@ function SeedForm() {
           </div>
         )}
 
-        {/* Selected movie chip */}
         {selected && (
           <>
             <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20">
@@ -426,6 +707,18 @@ function SeedForm() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Shared ───────────────────────────────────────────────────────────────────
+
+function SectionHeading({ icon, title }: { icon: ReactNode; title: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <div className="w-1 h-5 rounded-full bg-accent" />
+      <span className="text-cinema-muted">{icon}</span>
+      <h2 className="font-heading font-semibold text-cinema-text text-base">{title}</h2>
     </div>
   )
 }

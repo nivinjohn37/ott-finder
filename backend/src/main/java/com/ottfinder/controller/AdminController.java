@@ -3,6 +3,8 @@ package com.ottfinder.controller;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
+import com.ottfinder.dto.response.AdminContentStats;
+import com.ottfinder.dto.response.AdminReviewDto;
 import com.ottfinder.dto.response.AdminStats;
 import com.ottfinder.dto.response.AdminUserDto;
 import com.ottfinder.dto.response.ApiResponse;
@@ -10,16 +12,21 @@ import com.ottfinder.dto.response.OttAvailability;
 import com.ottfinder.entity.Movie;
 import com.ottfinder.entity.MovieAvailability;
 import com.ottfinder.entity.OttPlatform;
+import com.ottfinder.entity.Review;
 import com.ottfinder.entity.User;
 import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.OttPlatformRepository;
+import com.ottfinder.repository.ReviewRepository;
 import com.ottfinder.repository.UserRepository;
+import com.ottfinder.repository.WatchGroupRepository;
 import com.ottfinder.repository.WatchlistRepository;
 import com.ottfinder.security.FirebasePrincipal;
 import com.ottfinder.service.MovieSearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,9 +47,10 @@ public class AdminController {
     private final MovieRepository movieRepository;
     private final OttPlatformRepository ottPlatformRepository;
     private final MovieAvailabilityRepository movieAvailabilityRepository;
+    private final ReviewRepository reviewRepository;
+    private final WatchGroupRepository watchGroupRepository;
     private final MovieSearchService movieSearchService;
     private final StringRedisTemplate redisTemplate;
-    private final com.ottfinder.repository.ReviewRepository reviewRepository;
 
     private boolean isAdmin(FirebasePrincipal principal) {
         if (principal == null) return false;
@@ -61,8 +69,106 @@ public class AdminController {
                 userRepository.count(),
                 watchlistRepository.count(),
                 movieRepository.count(),
-                ottPlatformRepository.count()
+                ottPlatformRepository.count(),
+                reviewRepository.count(),
+                watchGroupRepository.count()
         )));
+    }
+
+    @GetMapping("/content-stats")
+    public ResponseEntity<ApiResponse<AdminContentStats>> getContentStats(
+            @AuthenticationPrincipal FirebasePrincipal principal) {
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        List<AdminContentStats.TopReviewedMovie> topMovies = reviewRepository
+                .findTopReviewedMovies(PageRequest.of(0, 10))
+                .stream()
+                .map(row -> new AdminContentStats.TopReviewedMovie(
+                        (Integer) row[0],
+                        (String) row[1],
+                        (Long) row[2],
+                        ((Double) row[3])
+                ))
+                .toList();
+
+        List<AdminContentStats.RatingBucket> ratingDist = reviewRepository
+                .findRatingDistribution()
+                .stream()
+                .map(row -> new AdminContentStats.RatingBucket(
+                        ((Number) row[0]).intValue(),
+                        (Long) row[1]
+                ))
+                .toList();
+
+        List<AdminContentStats.PlatformCount> topPlatforms = movieAvailabilityRepository
+                .findTopPlatformsByCount(PageRequest.of(0, 7))
+                .stream()
+                .map(row -> new AdminContentStats.PlatformCount(
+                        (String) row[0],
+                        (Long) row[1]
+                ))
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(
+                new AdminContentStats(topMovies, ratingDist, topPlatforms)));
+    }
+
+    @GetMapping("/reviews")
+    public ResponseEntity<ApiResponse<AdminReviewsPage>> getReviews(
+            @AuthenticationPrincipal FirebasePrincipal principal,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size) {
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        Page<Review> reviewPage = reviewRepository.findAllWithUserAndMovie(PageRequest.of(page, size));
+        List<AdminReviewDto> reviews = reviewPage.getContent().stream()
+                .map(r -> new AdminReviewDto(
+                        r.getId(),
+                        r.getMovie().getTmdbId(),
+                        r.getMovie().getTitle(),
+                        r.getUser().getDisplayName() != null ? r.getUser().getDisplayName() : r.getUser().getEmail(),
+                        r.getUser().getEmail(),
+                        r.getRating(),
+                        r.getNote(),
+                        r.getCreatedAt()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(new AdminReviewsPage(
+                reviews,
+                reviewPage.getTotalElements(),
+                reviewPage.getTotalPages(),
+                page
+        )));
+    }
+
+    public record AdminReviewsPage(
+            List<AdminReviewDto> reviews,
+            long totalElements,
+            int totalPages,
+            int page
+    ) {}
+
+    @DeleteMapping("/reviews/{id}")
+    @Transactional
+    public ResponseEntity<ApiResponse<Void>> deleteReview(
+            @AuthenticationPrincipal FirebasePrincipal principal,
+            @PathVariable Long id) {
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        if (!reviewRepository.existsById(id)) {
+            return ResponseEntity.status(404).body(ApiResponse.error("NOT_FOUND", "Review not found"));
+        }
+
+        reviewRepository.deleteById(id);
+        log.info("Admin {} deleted review id={}", principal.uid(), id);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @GetMapping("/users")
@@ -72,7 +178,7 @@ public class AdminController {
             return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
         }
         List<AdminUserDto> users = userRepository.findAll().stream()
-                .sorted(java.util.Comparator.comparing(com.ottfinder.entity.User::getCreatedAt,
+                .sorted(java.util.Comparator.comparing(User::getCreatedAt,
                         java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
                 .map(u -> new AdminUserDto(
                         u.getId(),
@@ -123,7 +229,6 @@ public class AdminController {
                     ApiResponse.error("VALIDATION_ERROR", "Unknown platform: " + body.platformName()));
         }
 
-        // Ensure movie is in DB — fetch from TMDB if missing
         if (!movieRepository.existsByTmdbId(body.tmdbId())) {
             try {
                 movieSearchService.getMovieDetail(body.tmdbId(), body.mediaType());
@@ -166,7 +271,6 @@ public class AdminController {
                         .build());
 
         movieAvailabilityRepository.save(availability);
-
         redisTemplate.delete("ott:availability:" + body.tmdbId());
         log.info("Admin seeded availability: tmdbId={} on platform={}", body.tmdbId(), body.platformName());
 
@@ -244,7 +348,6 @@ public class AdminController {
         target.setBlacklisted(!target.isBlacklisted());
         userRepository.save(target);
 
-        // Disable/enable account in Firebase and revoke tokens when blacklisting
         try {
             FirebaseAuth.getInstance().updateUser(
                     new UserRecord.UpdateRequest(target.getFirebaseUid())
@@ -256,7 +359,6 @@ public class AdminController {
             log.warn("Firebase status update failed for uid={}: {}", target.getFirebaseUid(), ex.getMessage());
         }
 
-        // Keep a fast-lookup key in Redis so the auth filter can reject existing tokens immediately
         String blacklistKey = "blacklist:" + target.getFirebaseUid();
         if (target.isBlacklisted()) {
             redisTemplate.opsForValue().set(blacklistKey, "1");

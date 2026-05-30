@@ -24,4 +24,7 @@ public interface MovieAvailabilityRepository extends JpaRepository<MovieAvailabi
     Optional<MovieAvailability> findByMovieIdAndPlatformId(Long movieId, Long platformId);
 
     void deleteByMovieIdAndPlatformId(Long movieId, Long platformId);
+
+    @Query("SELECT ma.platform.displayName, COUNT(ma) FROM MovieAvailability ma GROUP BY ma.platform.displayName ORDER BY COUNT(ma) DESC")
+    List<Object[]> findTopPlatformsByCount(org.springframework.data.domain.Pageable pageable);
 }
