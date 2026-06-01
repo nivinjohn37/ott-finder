@@ -5,6 +5,7 @@ import {
   Search, Tv2, Bookmark, Star, Users, Trophy, Lightbulb,
   User, Award, Palette, TrendingUp, Zap, ArrowRight, Play,
   CheckCircle2, Heart, Globe, Smartphone, Share2, MoreHorizontal,
+  Sparkles, Clock, ThumbsUp, History, Settings2, Bell, Brain, Rocket,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
@@ -151,6 +152,87 @@ const FEATURES = [
     bg: 'rgba(240,78,40,0.08)',
     border: 'rgba(240,78,40,0.2)',
   },
+  {
+    icon: Sparkles,
+    title: 'Curated Shelves',
+    description: 'Hand-picked discovery shelves on the homepage — Top Rated on Netflix, Hidden Gems, New Arrivals, and Leaving Soon.',
+    color: '#FBBF24',
+    bg: 'rgba(251,191,36,0.08)',
+    border: 'rgba(251,191,36,0.2)',
+  },
+  {
+    icon: Settings2,
+    title: 'For You Shelf',
+    description: 'Set your favourite genres and platforms — WatchMate builds a personalised shelf using your preferences.',
+    color: '#F04E28',
+    bg: 'rgba(240,78,40,0.08)',
+    border: 'rgba(240,78,40,0.2)',
+  },
+  {
+    icon: ThumbsUp,
+    title: 'Review Likes & Reports',
+    description: 'Like reviews you find helpful. Report inappropriate ones — all feeds into community moderation.',
+    color: '#8B5CF6',
+    bg: 'rgba(139,92,246,0.08)',
+    border: 'rgba(139,92,246,0.2)',
+  },
+  {
+    icon: History,
+    title: 'Recently Viewed',
+    description: 'Your last 10 titles are pinned on the homepage for quick access — no sign-in required to start, persists across sessions.',
+    color: '#14B8A6',
+    bg: 'rgba(20,184,166,0.08)',
+    border: 'rgba(20,184,166,0.2)',
+  },
+  {
+    icon: Clock,
+    title: 'Leaving Soon Alerts',
+    description: 'See which titles are leaving a platform within the next 60 days so you can watch before they\'re gone.',
+    color: '#FB7185',
+    bg: 'rgba(251,113,133,0.08)',
+    border: 'rgba(251,113,133,0.2)',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Region & Language Trends',
+    description: 'Switch trending by region (India, US, UK) or by language (Hindi, Tamil, Malayalam) — see what\'s big where you care.',
+    color: '#38BDF8',
+    bg: 'rgba(56,189,248,0.08)',
+    border: 'rgba(56,189,248,0.2)',
+  },
+]
+
+const COMING_SOON = [
+  {
+    icon: Bell,
+    title: 'Expiry Push Notifications',
+    description: 'Get notified before a watchlisted movie leaves a platform. Never miss your last chance to watch.',
+    color: '#F59E0B',
+  },
+  {
+    icon: Brain,
+    title: 'AI Recommendations',
+    description: '"Because you watched X" — Claude-powered suggestions based on your watch history and ratings.',
+    color: '#8B5CF6',
+  },
+  {
+    icon: Sparkles,
+    title: 'Mood-based Discovery',
+    description: 'Answer a few quick questions about your mood and who you\'re watching with — get a perfect shortlist.',
+    color: '#EC4899',
+  },
+  {
+    icon: Globe,
+    title: 'Country-aware Availability',
+    description: 'OTT data for Australia, US, and UK — not just India. One app for the Indian diaspora worldwide.',
+    color: '#34D399',
+  },
+  {
+    icon: Rocket,
+    title: 'Mobile App',
+    description: 'Native iOS and Android app built on the same backend. React Native — full feature parity, push notifications.',
+    color: '#38BDF8',
+  },
 ]
 
 const STEPS = [
@@ -246,8 +328,9 @@ export function FeaturesPage() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-cinema-muted text-lg sm:text-xl font-body leading-relaxed max-w-2xl mx-auto mb-10"
           >
-            WatchMate tells you where to stream any movie in India, helps you track
-            what you've watched, and lets you compete with friends on who watches the most.
+            WatchMate tells you where to stream any movie in India, surfaces personalised
+            recommendations, helps you track what you've watched, and lets you compete
+            with friends on who watches the most.
           </motion.p>
 
           {/* CTAs */}
@@ -660,6 +743,47 @@ export function FeaturesPage() {
             ))}
           </div>
         </FadeUp>
+      </section>
+
+      {/* ── Coming Soon ─────────────────────────────────────────────────────── */}
+      <section className="max-w-6xl mx-auto px-4 py-24">
+        <FadeUp className="text-center mb-16">
+          <p className="text-accent text-xs font-body font-semibold uppercase tracking-widest mb-3">
+            On the roadmap
+          </p>
+          <h2 className="font-heading font-bold text-3xl sm:text-4xl text-cinema-text mb-4">
+            What's coming next
+          </h2>
+          <p className="text-cinema-muted/60 font-body text-base max-w-xl mx-auto">
+            WatchMate is actively being built. Here's what's planned for the next phases.
+          </p>
+        </FadeUp>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {COMING_SOON.map((f, i) => (
+            <FadeUp key={f.title} delay={Math.min(i * 0.08, 0.4)}>
+              <div className="rounded-2xl p-5 border border-cinema-navy-border bg-cinema-navy/40 relative overflow-hidden group">
+                {/* Coming soon badge */}
+                <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-cinema-surface border border-cinema-navy-border text-cinema-muted/50 text-2xs font-body font-semibold uppercase tracking-wider">
+                  Soon
+                </div>
+
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 duration-300"
+                  style={{ background: `${f.color}15`, border: `1px solid ${f.color}25` }}
+                >
+                  <f.icon size={18} style={{ color: f.color }} className="opacity-70" />
+                </div>
+                <h3 className="font-heading font-bold text-cinema-muted text-sm mb-1.5 pr-12">
+                  {f.title}
+                </h3>
+                <p className="text-cinema-muted/50 text-xs font-body leading-relaxed">
+                  {f.description}
+                </p>
+              </div>
+            </FadeUp>
+          ))}
+        </div>
       </section>
 
       {/* ── Bottom CTA ──────────────────────────────────────────────────────── */}
