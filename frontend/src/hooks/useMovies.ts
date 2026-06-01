@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves } from '@/api/movies'
+import { useAuth } from '@/context/AuthContext'
 
 export function useSearch(query: string) {
   return useQuery({
@@ -45,9 +46,10 @@ export function usePersonFilmography(personId: number | null) {
 }
 
 export function useShelves() {
+  const { user } = useAuth()
   return useQuery({
-    queryKey: ['movies', 'shelves'],
+    queryKey: ['movies', 'shelves', user?.uid ?? 'anon'],
     queryFn: getShelves,
-    staleTime: 6 * 60 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
   })
 }

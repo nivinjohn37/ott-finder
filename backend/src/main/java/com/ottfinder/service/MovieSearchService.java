@@ -162,7 +162,7 @@ public class MovieSearchService {
 
         // DB query for leaving soon (no external call)
         List<MovieAvailability> leaving = movieAvailabilityRepository.findLeavingSoon(
-                OffsetDateTime.now(), OffsetDateTime.now().plusDays(30));
+                OffsetDateTime.now(), OffsetDateTime.now().plusDays(60));
         List<MovieSearchResult> leavingSoon = mapLeavingSoon(leaving);
 
         // For You (requires user preferences)
