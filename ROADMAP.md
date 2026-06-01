@@ -1,6 +1,6 @@
 # WatchMate — Product Roadmap
 
-Last updated: 2026-05-29
+Last updated: 2026-06-01
 
 **Goal:** Grow from MVP into a portfolio centrepiece for senior product engineering roles in Australia.
 
@@ -45,13 +45,14 @@ Last updated: 2026-05-29
 - [x] **Gamification badges** — `BadgeService`, `UserBadge` entity, `BadgeCheckEvent`; "First Review", "10 Movies Watched", "Watchlist Collector" awarded server-side, shown on profile.
 - [x] **Genre movies drawer** — `GenreDrawer.tsx`, click genre pill → slide-in panel; `GET /api/movies/genre/{id}`.
 - [x] **Admin OTT seeding UI** — `AdminPage` `SeedForm`: search movie → pick platform → deep link → optional expiry. Edit/delete existing availability entries.
-- [ ] **Full Admin Dashboard** `/admin` — expanded admin observability and moderation layer. Four tabs:
-  - **Overview** — stat cards: total users, total reviews, total watchlist adds, movies in DB, active groups
-  - **Content** — most reviewed movies, avg rating distribution chart, genre breakdown (derived from watchlist + reviews data), top OTT platforms by watchlist presence
-  - **Reviews** — paginated table of all user reviews; filter by rating / date / reported; delete abusive or policy-violating reviews; soft-delete with reason log
-  - **Platforms** — OTT availability seeding form (search movie → pick platform → deep link → optional expiry); existing availability table with edit/delete
-  - Backend: `GET /api/admin/stats` (already defined), `GET /api/admin/reviews`, `DELETE /api/admin/reviews/{id}`, extend existing `/api/admin/platforms`
-  - Frontend: role-gated (`role === 'admin'`), redirect non-admins to home; reuse existing stat card components
+- [x] **Full Admin Dashboard** `/admin` — 4-tab layout (Overview / Content / Reviews / Platforms). V18 migration adds `review_likes` table + `report_count` on reviews.
+  - **Overview** — 6 stat cards: users, reviews, watchlist adds, movies in DB, active groups, blacklisted users. Clickable Users → UserListModal with blacklist toggle.
+  - **Content** — bar charts: most reviewed movies, star rating distribution (yellow bars), top platforms by availability count.
+  - **Reviews** — paginated table with rating filter chips (All/★–★★★★★), "Reported only" toggle, client-side search by movie/user. Likes + Reports columns. Red badge on reported rows. Hard delete.
+  - **Platforms** — OTT availability seeding form unchanged. Existing entries table with delete.
+  - Backend: `GET /api/admin/reviews?page&ratingFilter&reportedOnly`, `DELETE /api/admin/reviews/{id}`, `GET /api/admin/content-stats`.
+- [x] **Review likes & reports** — thumbs-up like/unlike on any review (not your own). Flag button reports to admin. `review_likes` table, `report_count` on reviews, optimistic UI updates.
+- [x] **Release date field on movie detail** — separate labeled "Release date" row below genres showing full date in Australian long format (e.g. "15 May 2023"). Year badge in the top metadata row unchanged.
 
 ---
 
@@ -83,10 +84,10 @@ group_suggestions        (id, group_id, movie_id, suggested_by → users.id, upv
 
 ## Phase 3 — Geo-awareness, Data Pipeline & Recommendations
 
-### Phase 3a — Region-aware trending *(quick win, do first)*
+### Phase 3a — Region-aware trending ✓
 
-- [ ] **Country/region selector** — navbar dropdown: India, Australia, USA, UK, Canada, Global. Persisted in localStorage. Flag + country name. Auto-detect default via `navigator.language`.
-- [ ] **Trending by region** — pass `region` param to TMDB `GET /trending/all/day?region={code}`. Cache key: `tmdb:trending:{region}` TTL 24h. Homepage label: "Trending in India" / "Trending Globally".
+- [x] **Country/region selector** — navbar dropdown: India, Australia, USA, UK, Canada, Global. Persisted in localStorage. Flag + country name. Auto-detect default via `navigator.language`.
+- [x] **Trending by region** — pass `region` param to TMDB `GET /trending/all/day?region={code}`. Cache key: `tmdb:trending:{region}` TTL 24h. Homepage label: "Trending in India" / "Trending Globally".
 - OTT availability stays India-only in this phase — platform seeds are India-only.
 
 ### Phase 3b — Full country-aware OTT availability *(plan carefully, do after Phase 1.5)*
@@ -97,10 +98,10 @@ group_suggestions        (id, group_id, movie_id, suggested_by → users.id, upv
 - [ ] **User country preference** — stored in `user_preferences` table (same migration as Phase 1.5 prefs). Falls back to localStorage for logged-out users.
 - [ ] **"Where to Watch" adapts per country** — movie detail shows correct platforms for selected country. "Not available in [country]" message when no match.
 
-### Phase 3c — Recommendations & Insights
+### Phase 3c — Recommendations & Insights *(partially done)*
 
-- [ ] **Curated shelves** on homepage — "Top Rated on Netflix India", "Leaving Soon", "Hidden Gems", "New Arrivals". Built by scheduled job using TMDB Discover + availability data. No user data needed. Redis TTL 6h.
-- [ ] **"For You" personalised shelf** — TMDB Discover filtered by user's preferred genres/platforms (needs Phase 1.5 preferences). No ML required.
+- [x] **Curated shelves** on homepage — "Top Rated on Netflix India", "Hidden Gems", "New Arrivals", "Leaving Soon". TMDB Discover API per shelf, each cached individually in Redis 6h. `GET /api/movies/shelves`. `CuratedShelf` component with horizontal scroll + left/right arrow buttons.
+- [x] **"For You" personalised shelf** — TMDB Discover filtered by user's saved genre + platform preferences. Included in `/api/movies/shelves` response. Hidden if user has no preferences. Query key includes user uid so it refetches on login.
 - [ ] **Recommendation system** — "Because you watched X". Start with PostgreSQL cosine similarity on genre vectors; evolve to ML model as data grows. Shown on homepage + profile.
 - [ ] **Insights dashboard** `/insights` — sentiment scoring on reviews, "hidden gem" detector (high user rating + low TMDB rating), platform value score, genre trending. PostgreSQL window functions + `/api/insights` endpoint.
 - [ ] **Collaborative filtering** — "Users who watched X also liked Y". Feeds from reviews + watchlist + group watch history.

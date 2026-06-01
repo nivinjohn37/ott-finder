@@ -251,9 +251,79 @@ Core idea: user shares a reel/video from Instagram/YouTube to the app via the mo
 
 ## Architecture Notes
 
-- Next Flyway migration: **V15**
+- Next Flyway migration: **V19** *(V18 = review_likes + report_count on reviews)*
 - Backend hosted on Railway; frontend on Vercel (auto-deploy broken — run `vercel --prod` manually from `frontend/`)
 - Redis cache key reference: see `ARCHITECTURE.md`
 - All new endpoints must follow `ApiResponse<T>` envelope
 - Phase 2.5 is the highest-interview-value phase — multi-user data, invite flows, leaderboard aggregation are rare in portfolio projects
 - Phase 3e sentiment key: `sentiment:{tmdbId}` TTL 24h — see Phase 3d for other insight keys
+
+---
+
+## Session Log
+
+> Append-only. Each entry records what was built, key decisions made, and the current migration watermark. Never edit past entries.
+
+---
+
+### 2026-06-01 — Admin Dashboard, Review Interactions, Phase 3c Shelves
+
+**Next Flyway migration after this session: V19**
+
+#### Full Admin Dashboard (4-tab layout)
+
+- **Migration V18** — `review_likes (review_id, user_id, UNIQUE)` + `report_count INT DEFAULT 0` on `reviews`.
+- `ReviewLike` entity, `ReviewLikeRepository` (batch like-count + liked-by-me queries to avoid N+1).
+- `AdminReviewDto` record with `likeCount`, `reportCount` fields.
+- `AdminContentStats` record — `TopReviewedMovie`, `RatingBucket`, `PlatformCount` nested records.
+- Backend endpoints added:
+  - `POST /api/movies/{tmdbId}/reviews/{reviewId}/like` — toggle like, blocks own-review like.
+  - `POST /api/movies/{tmdbId}/reviews/{reviewId}/report` — increments `report_count`, blocks own-review report.
+  - `GET /api/admin/reviews?page&ratingFilter&reportedOnly` — paginated with 4-path JPQL dispatch (rating × reported combos).
+  - `DELETE /api/admin/reviews/{id}` — hard delete.
+  - `GET /api/admin/content-stats` — most reviewed movies, rating distribution, top platforms.
+- Frontend: `AdminPage.tsx` rewritten as 4-tab layout (AnimatePresence). Overview has clickable user count → UserListModal. Content tab has bar charts. Reviews tab has filter chips, "Reported only" toggle, client-side search, Likes/Reports columns, red tint on reported rows.
+- `ReviewSection.tsx`: ThumbsUp like button (filled when liked, shows count), Flag report button (hidden for own reviews, shows "Reported" label after submit). Optimistic update via React Query `onMutate`.
+
+#### Release Date on Movie Detail
+
+- Added a labeled "Release date" field below the genres/runtime row on `MovieDetailPage.tsx`.
+- Shows full date in `en-AU` locale (e.g. "15 May 2023"). Year badge in the top metadata row unchanged.
+
+#### Phase 3a — Region-aware Trending (completed earlier, recording here)
+
+- Navbar region selector dropdown (India, Australia, US, UK, Canada, Global). Persisted in `localStorage`. Auto-detected via `navigator.language`.
+- `tmdb:trending:{region}:{language}` cache key. Homepage label changes to "Trending in India" etc.
+- Language filter (All / Hindi / Tamil / Malayalam / Telugu) — uses `/discover` endpoint when language is not "all".
+
+#### Phase 3c — Curated Shelves
+
+- `GET /api/movies/shelves` — public endpoint; optional Firebase uid from SecurityContext populates "For You".
+- `ShelvesResult` DTO record with 5 lists: `topRatedNetflix`, `hiddenGems`, `newArrivals`, `leavingSoon`, `forYou`.
+- `TMDBService.discoverByFilters(mediaType, sortBy, withProviders, withGenreIds, voteAverageGte, voteCountGte, voteCountLte)` — Redis cache key `tmdb:discover:{params}` TTL 6h.
+- `MovieAvailabilityRepository.findLeavingSoon(start, end)` — JPQL with `JOIN FETCH movie + platform`, `available_until BETWEEN now AND now+60days`.
+- `MovieSearchService.getShelves(uid)` — 3 parallel CompletableFutures (TMDB discover) + 1 DB query (leaving soon) + 1 synchronous "For You" call.
+- "For You" logic: reads `UserPreference` rows for the uid, maps genre names → TMDB genre IDs, platform names → JustWatch provider IDs, calls `discoverByFilters`. Returns empty if no preferences.
+- `CuratedShelf.tsx` — horizontal scroll with left/right arrow buttons, custom thin scrollbar, compact poster cards (w-32/sm:w-36), title slides up on hover, red countdown badge on Leaving Soon cards.
+- `useShelves()` query key includes `user?.uid ?? 'anon'` so it refetches on login (prevents stale anonymous cache hiding "For You").
+- Shelves are conditionally rendered — hidden if the array is empty (no noise when no data).
+
+**Shelf logic summary (for re-context):**
+| Shelf | TMDB params | Notes |
+|---|---|---|
+| Top Rated on Netflix | `sort=vote_average.desc`, `providers=8`, `voteAvg≥7.0`, `votes≥500` | Provider 8 = Netflix India |
+| Hidden Gems | `sort=vote_average.desc`, `voteAvg≥7.5`, `votes 50–1500` | No platform filter |
+| New Arrivals | `sort=primary_release_date.desc`, `providers=8\|9\|122\|158\|232`, `votes≥10` | All major Indian platforms |
+| Leaving Soon | DB query `available_until BETWEEN now AND now+60d` | Only shows admin-seeded expiry dates |
+| For You | `sort=popularity.desc`, genre IDs + provider IDs from user prefs | Empty if no preferences saved |
+
+#### Features Page Update
+
+- Added 6 new feature cards to the "Packed with features" grid: Curated Shelves, For You Shelf, Review Likes & Reports, Recently Viewed, Leaving Soon Alerts, Region & Language Trends.
+- Added "Coming Soon" section below the features grid: Push Notifications, AI Recommendations, Mood-based Discovery, Country-aware Availability (AU/US/UK), Mobile App.
+- Updated hero subheading to mention personalised recommendations.
+
+#### Bug fixed this session
+
+- `useShelves` stale cache bug: 6h staleTime + shared query key meant "For You" stayed empty after login. Fixed by adding uid to query key and reducing staleTime to 30min.
+- Leaving Soon window was 30 days — extended to 60 days after user couldn't see freshly seeded movies with dates slightly further out.

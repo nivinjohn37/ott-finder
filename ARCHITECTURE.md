@@ -303,8 +303,9 @@ notification_logs (
 | V15 | Create user badges table |
 | V16 | Create groups table |
 | V17 | Seed admin role for app owner (getnivinjohn@gmail.com) |
+| V18 | Add `review_likes` table (review_id, user_id, UNIQUE) + `report_count INT DEFAULT 0` on reviews |
 
-Next available: **V18**
+Next available: **V19**
 
 ### OTT Platform Seeds (V7 migration)
 
@@ -868,7 +869,7 @@ jobs:
 
 MVP is live and deployed. See `ROADMAP.md` for the full feature backlog and phase plan.
 
-**Next migration:** V11 — add `role VARCHAR DEFAULT 'user'` to `users` (Phase 1.5 admin role)
+**Next migration:** V19
 
 ---
 
