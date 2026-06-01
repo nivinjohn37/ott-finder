@@ -48,10 +48,11 @@ public class TMDBService {
     @Value("${tmdb.image-base-url}")
     private String imageBaseUrl;
 
-    private static final Duration SEARCH_TTL   = Duration.ofHours(24);
-    private static final Duration DETAIL_TTL   = Duration.ofHours(24);
-    private static final Duration TRENDING_TTL = Duration.ofHours(6);
-    private static final Duration GENRE_TTL    = Duration.ofHours(6);
+    private static final Duration SEARCH_TTL    = Duration.ofHours(24);
+    private static final Duration DETAIL_TTL    = Duration.ofHours(24);
+    private static final Duration TRENDING_TTL  = Duration.ofHours(6);
+    private static final Duration GENRE_TTL     = Duration.ofHours(6);
+    private static final Duration DISCOVER_TTL  = Duration.ofHours(6);
 
     private static final Map<String, Integer> GENRE_IDS = Map.ofEntries(
         Map.entry("Action", 28),
@@ -210,6 +211,73 @@ public class TMDBService {
 
     public Set<String> getSupportedGenres() {
         return GENRE_IDS.keySet();
+    }
+
+    public Integer getGenreIdForName(String name) {
+        return GENRE_IDS.get(name);
+    }
+
+    public List<MovieSearchResult> discoverByFilters(
+            String mediaType,
+            String sortBy,
+            String withProviders,
+            String withGenreIds,
+            Double voteAverageGte,
+            Integer voteCountGte,
+            Integer voteCountLte) {
+
+        String safeProviders = withProviders != null ? withProviders.replace("|", "_") : "any";
+        String cacheKey = String.format("tmdb:discover:%s:%s:%s:%s:%s:%s:%s",
+                mediaType, sortBy, safeProviders,
+                withGenreIds != null ? withGenreIds : "any",
+                voteAverageGte != null ? voteAverageGte : "any",
+                voteCountGte != null ? voteCountGte : "any",
+                voteCountLte != null ? voteCountLte : "any");
+
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return deserializeList(cached, new TypeReference<>() {});
+        }
+
+        String resolvedType = "tv".equals(mediaType) ? "tv" : "movie";
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromHttpUrl(baseUrl + "/discover/" + resolvedType)
+                .queryParam("api_key", apiKey)
+                .queryParam("language", "en-US")
+                .queryParam("watch_region", "IN")
+                .queryParam("sort_by", sortBy)
+                .queryParam("page", 1);
+
+        if (withProviders != null) builder.queryParam("with_watch_providers", withProviders);
+        if (withGenreIds != null) builder.queryParam("with_genres", withGenreIds);
+        if (voteAverageGte != null) builder.queryParam("vote_average.gte", voteAverageGte);
+        if (voteCountGte != null) builder.queryParam("vote_count.gte", voteCountGte);
+        if (voteCountLte != null) builder.queryParam("vote_count.lte", voteCountLte);
+
+        List<MovieSearchResult> results = fetchDiscoverResults(builder.toUriString(), resolvedType);
+        if (!results.isEmpty()) cache(cacheKey, results, DISCOVER_TTL);
+        return results;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<MovieSearchResult> fetchDiscoverResults(String url, String mediaType) {
+        try {
+            Map<String, Object> response = fetchMap(url);
+            if (response == null || !response.containsKey("results")) return Collections.emptyList();
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+            return results.stream()
+                    .map(r -> {
+                        java.util.HashMap<String, Object> copy = new java.util.HashMap<>(r);
+                        copy.put("media_type", mediaType);
+                        return copy;
+                    })
+                    .map(this::mapToSearchResult)
+                    .filter(Objects::nonNull)
+                    .toList();
+        } catch (Exception ex) {
+            log.error("TMDB discoverByFilters failed url={}: {}", url, ex.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     public PersonFilmography getPersonFilmography(Integer personId) {
@@ -516,7 +584,7 @@ public class TMDBService {
         }
     }
 
-    private String buildImageUrl(String path) {
+    public String buildImageUrl(String path) {
         if (path == null || path.isBlank()) return null;
         return imageBaseUrl + path;
     }

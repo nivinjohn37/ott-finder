@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies } from '@/api/movies'
+import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves } from '@/api/movies'
 
 export function useSearch(query: string) {
   return useQuery({
@@ -41,5 +41,13 @@ export function usePersonFilmography(personId: number | null) {
     queryFn: () => getPersonFilmography(personId!),
     enabled: personId !== null && personId > 0,
     staleTime: 30 * 60 * 1000,
+  })
+}
+
+export function useShelves() {
+  return useQuery({
+    queryKey: ['movies', 'shelves'],
+    queryFn: getShelves,
+    staleTime: 6 * 60 * 60 * 1000,
   })
 }

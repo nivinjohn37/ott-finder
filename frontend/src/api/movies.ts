@@ -1,4 +1,4 @@
-import type { ApiResponse, MovieDetail, MovieSearchResult, PersonFilmography } from '@/types'
+import type { ApiResponse, MovieDetail, MovieSearchResult, PersonFilmography, ShelvesResult } from '@/types'
 import api from './axios'
 
 export async function searchMovies(q: string): Promise<MovieSearchResult[]> {
@@ -28,6 +28,16 @@ export async function getPersonFilmography(personId: number): Promise<PersonFilm
   const res = await api.get<ApiResponse<PersonFilmography>>(`/movies/person/${personId}`)
   if (!res.data.data) throw new Error('Person not found')
   return res.data.data
+}
+
+export async function getShelves(): Promise<ShelvesResult> {
+  const empty: ShelvesResult = { topRatedNetflix: [], hiddenGems: [], newArrivals: [], leavingSoon: [], forYou: [] }
+  try {
+    const res = await api.get<ApiResponse<ShelvesResult>>('/movies/shelves')
+    return res.data.data ?? empty
+  } catch {
+    return empty
+  }
 }
 
 export async function getGenreMovies(genreName: string, mediaType = 'movie'): Promise<MovieSearchResult[]> {

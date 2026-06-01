@@ -4,6 +4,7 @@ import com.ottfinder.entity.MovieAvailability;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.OffsetDateTime;
 import java.util.Optional;
 import org.springframework.data.repository.query.Param;
 
@@ -27,4 +28,15 @@ public interface MovieAvailabilityRepository extends JpaRepository<MovieAvailabi
 
     @Query("SELECT ma.platform.displayName, COUNT(ma) FROM MovieAvailability ma GROUP BY ma.platform.displayName ORDER BY COUNT(ma) DESC")
     List<Object[]> findTopPlatformsByCount(org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT ma FROM MovieAvailability ma
+            JOIN FETCH ma.movie
+            JOIN FETCH ma.platform
+            WHERE ma.availableUntil IS NOT NULL
+            AND ma.availableUntil BETWEEN :start AND :end
+            ORDER BY ma.availableUntil ASC
+            """)
+    List<MovieAvailability> findLeavingSoon(@Param("start") OffsetDateTime start,
+                                            @Param("end") OffsetDateTime end);
 }

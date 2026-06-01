@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { TrendingUp, Search } from 'lucide-react'
+import { TrendingUp, Search, Star, Sparkles, Clock, Tv, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useTrending } from '@/hooks/useMovies'
+import { useTrending, useShelves } from '@/hooks/useMovies'
 import { useRegion } from '@/context/RegionContext'
 import { HeroSection } from '@/components/movie/HeroSection'
 import { MovieGrid } from '@/components/movie/MovieGrid'
@@ -9,12 +9,14 @@ import { SkeletonGrid } from '@/components/common/SkeletonCard'
 import { EmptyState } from '@/components/common/EmptyState'
 import { SearchBar } from '@/components/movie/SearchBar'
 import { RecentlyViewedShelf } from '@/components/movie/RecentlyViewedShelf'
+import { CuratedShelf } from '@/components/movie/CuratedShelf'
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
 import { useAuth } from '@/context/AuthContext'
 
 export function HomePage() {
   const { region } = useRegion()
   const { data: trending, isLoading, isError } = useTrending(region.code)
+  const { data: shelves } = useShelves()
   const { items: recentlyViewed, clearAll } = useRecentlyViewed()
   const { user } = useAuth()
   const trendingLabel = region.code === 'global' ? 'Trending Globally' : `Trending in ${region.label}`
@@ -41,6 +43,52 @@ export function HomePage() {
 
         {/* Recently viewed — logged-in users only */}
         {user && <RecentlyViewedShelf items={recentlyViewed} onClear={clearAll} />}
+
+        {/* For You — logged-in users with preferences */}
+        {user && shelves && shelves.forYou.length > 0 && (
+          <CuratedShelf
+            title="For You"
+            icon={<User size={18} className="text-accent" />}
+            movies={shelves.forYou}
+          />
+        )}
+
+        {/* Leaving Soon */}
+        {shelves && shelves.leavingSoon.length > 0 && (
+          <CuratedShelf
+            title="Leaving Soon"
+            icon={<Clock size={18} className="text-red-400" />}
+            movies={shelves.leavingSoon}
+            showExpiry
+          />
+        )}
+
+        {/* Top Rated on Netflix India */}
+        {shelves && shelves.topRatedNetflix.length > 0 && (
+          <CuratedShelf
+            title="Top Rated on Netflix"
+            icon={<Star size={18} className="text-red-500" />}
+            movies={shelves.topRatedNetflix}
+          />
+        )}
+
+        {/* Hidden Gems */}
+        {shelves && shelves.hiddenGems.length > 0 && (
+          <CuratedShelf
+            title="Hidden Gems"
+            icon={<Sparkles size={18} className="text-yellow-400" />}
+            movies={shelves.hiddenGems}
+          />
+        )}
+
+        {/* New Arrivals */}
+        {shelves && shelves.newArrivals.length > 0 && (
+          <CuratedShelf
+            title="New Arrivals"
+            icon={<Tv size={18} className="text-sky-badge" />}
+            movies={shelves.newArrivals}
+          />
+        )}
 
         {/* Trending grid */}
         <section>

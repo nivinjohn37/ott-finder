@@ -4,9 +4,13 @@ import com.ottfinder.dto.response.ApiResponse;
 import com.ottfinder.dto.response.MovieDetail;
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.PersonFilmography;
+import com.ottfinder.dto.response.ShelvesResult;
+import com.ottfinder.security.FirebasePrincipal;
 import com.ottfinder.service.MovieSearchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -58,6 +62,16 @@ public class MovieController {
         }
         return ResponseEntity.ok(ApiResponse.success(
                 movieSearchService.getGenreMovies(name.trim(), mediaType)));
+    }
+
+    @GetMapping("/shelves")
+    public ResponseEntity<ApiResponse<ShelvesResult>> getShelves() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String uid = null;
+        if (auth != null && auth.getPrincipal() instanceof FirebasePrincipal fp) {
+            uid = fp.uid();
+        }
+        return ResponseEntity.ok(ApiResponse.success(movieSearchService.getShelves(uid)));
     }
 
     @GetMapping("/{tmdbId}")

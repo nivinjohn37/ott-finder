@@ -217,6 +217,14 @@ export interface BadgeDto {
   earnedAt: string
 }
 
+export interface ShelvesResult {
+  topRatedNetflix: MovieSearchResult[]
+  hiddenGems: MovieSearchResult[]
+  newArrivals: MovieSearchResult[]
+  leavingSoon: MovieSearchResult[]
+  forYou: MovieSearchResult[]
+}
+
 export type MediaType = 'movie' | 'tv'
 
 export const PLATFORM_COLORS: Record<string, string> = {

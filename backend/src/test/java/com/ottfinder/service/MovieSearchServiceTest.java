@@ -2,7 +2,11 @@ package com.ottfinder.service;
 
 import com.ottfinder.dto.response.MovieSearchResult;
 import com.ottfinder.dto.response.OttAvailability;
+import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
+import com.ottfinder.repository.OttPlatformRepository;
+import com.ottfinder.repository.UserPreferenceRepository;
+import com.ottfinder.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +27,10 @@ class MovieSearchServiceTest {
     @Mock TMDBService tmdbService;
     @Mock OTTAvailabilityService ottService;
     @Mock MovieRepository movieRepository;
+    @Mock MovieAvailabilityRepository movieAvailabilityRepository;
+    @Mock UserRepository userRepository;
+    @Mock UserPreferenceRepository userPreferenceRepository;
+    @Mock OttPlatformRepository ottPlatformRepository;
 
     // Inline executor to run tasks synchronously in tests
     private final Executor syncExecutor = Runnable::run;
@@ -31,7 +39,11 @@ class MovieSearchServiceTest {
 
     @BeforeEach
     void setup() {
-        movieSearchService = new MovieSearchService(tmdbService, ottService, movieRepository, syncExecutor);
+        movieSearchService = new MovieSearchService(
+                tmdbService, ottService, movieRepository,
+                movieAvailabilityRepository, userRepository,
+                userPreferenceRepository, ottPlatformRepository,
+                syncExecutor);
     }
 
     @Test
