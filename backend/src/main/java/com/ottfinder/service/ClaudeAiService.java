@@ -98,32 +98,31 @@ public class ClaudeAiService implements AiService {
                                               String language, String era) {
         if (!isAvailable()) return Collections.emptyList();
 
-        String eraLine = (era != null && !era.isBlank()) ? "\n- Era/year preference: " + era : "";
+        // Build a natural-language query the same way a person would ask — this is what
+        // Claude responds to best, matching how its training data describes movie taste.
+        String naturalQuery = buildNaturalQuery(mood, audience, language, era, length);
+
         String prompt = """
-                You are a world-class movie recommendation expert. Your job is to recommend \
-                movies that users will ACTUALLY enjoy and recognise.
+                You are an expert film curator and a knowledgeable friend who has watched \
+                thousands of films across all languages. Someone is asking you:
 
-                STRICT QUALITY RULES — follow these without exception:
-                1. Only recommend movies that are WELL-KNOWN and WIDELY CELEBRATED — mainstream \
-                   hits, cult classics, or critically acclaimed films with a proven audience.
-                2. Every film must have a strong reputation: at least 7.0/10 on IMDb, or be a \
-                   recognised award winner or beloved classic in its language.
-                3. For Indian regional languages, recommend only the most celebrated titles — \
-                   films that fans of that language would instantly recognise.
-                4. NO obscure, straight-to-streaming, or little-known films. If a film has fewer \
-                   than 5,000 IMDb votes, do not include it.
-                5. Prioritise films the user would be excited to discover or revisit.
+                "%s"
 
-                User preferences:
-                - Mood/vibe: %s
-                - Watching with: %s
-                - Preferred length: %s
-                - Language: %s%s
+                Give them 8 specific film recommendations. Your rules:
+                1. Only recommend films that are GENUINELY celebrated — award winners, \
+                   critically acclaimed, beloved by audiences, or cult classics.
+                2. Every film must be well-known enough that fans of that language/genre \
+                   would immediately recognise the title.
+                3. For Indian regional cinema think of films like: \
+                   Drishyam, Joji, Nayattu, Anjaam Pathiraa, Kumbalangi Nights (Malayalam); \
+                   Vikram, Vinnaithaandi Varuvaayaa, Pariyerum Perumal (Tamil); \
+                   Bahubali, Arjun Reddy, RRR (Telugu) — that calibre and recognition level.
+                4. NO obscure, straight-to-streaming-only, or festival-circuit-only films.
+                5. Match the genre/mood and era precisely.
 
-                Recommend exactly 8 movies that best match these preferences while meeting ALL \
-                quality rules above. Return ONLY a valid JSON array, no explanation, no markdown:
-                [{"title":"Exact Movie Title as on TMDB","year":2019,"language":"Malayalam","reason":"One sentence why this fits"}]
-                """.formatted(mood, audience, length, language, eraLine);
+                Return ONLY a JSON array, no explanation, no markdown fences:
+                [{"title":"Exact title as it appears on TMDB","year":2021,"language":"Malayalam","reason":"One sentence why this is perfect"}]
+                """.formatted(naturalQuery);
 
         String raw = callClaude(prompt);
         if (raw == null) return Collections.emptyList();
@@ -139,6 +138,55 @@ public class ClaudeAiService implements AiService {
             log.warn("Failed to parse Claude suggestion response: {}", ex.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    private String buildNaturalQuery(String mood, String audience, String language,
+                                      String era, String length) {
+        // Map abstract answer values → natural language phrases
+        String genre = switch (mood == null ? "" : mood.toLowerCase()) {
+            case String s when s.contains("thrill") || s.contains("intense") -> "thriller";
+            case String s when s.contains("feel-good") || s.contains("fun")  -> "feel-good, fun";
+            case String s when s.contains("emotional") || s.contains("moving")-> "emotional, moving drama";
+            case String s when s.contains("chill") || s.contains("easy")     -> "light, easy-watching";
+            case String s when s.contains("romantic")                         -> "romantic";
+            case String s when s.contains("thought") || s.contains("mind")   -> "thought-provoking, mind-bending";
+            default -> mood != null ? mood : "good";
+        };
+
+        String audiencePhrase = switch (audience == null ? "" : audience.toLowerCase()) {
+            case String s when s.contains("partner") || s.contains("date") -> "perfect for a date night";
+            case String s when s.contains("family") || s.contains("kids")  -> "family-friendly";
+            case String s when s.contains("friends")                        -> "great to watch with friends";
+            default -> "to watch alone";
+        };
+
+        String eraPhrase = "";
+        if (era != null && !era.isBlank() && !era.contains("any")) {
+            eraPhrase = switch (era.toLowerCase()) {
+                case String s when s.contains("2022") || s.contains("latest") -> "released from 2022 onwards";
+                case String s when s.contains("2016") || s.contains("recent") -> "released between 2016 and 2021";
+                case String s when s.contains("2000") && s.contains("2015")   -> "from the 2000s to 2015";
+                case String s when s.contains("classic") || s.contains("2000")-> "classic films before 2000";
+                default -> era;
+            };
+        }
+
+        String lengthPhrase = switch (length == null ? "" : length.toLowerCase()) {
+            case String s when s.contains("90") && s.contains("120") -> "around 90 to 120 minutes long";
+            case String s when s.contains("under") || s.contains("90") -> "under 90 minutes";
+            default -> "";
+        };
+
+        String lang = (language == null || language.toLowerCase().contains("any")) ? "" : language;
+
+        StringBuilder sb = new StringBuilder("Suggest some really good ");
+        if (!lang.isBlank()) sb.append(lang).append(" ");
+        sb.append(genre).append(" movies");
+        if (!eraPhrase.isBlank()) sb.append(" ").append(eraPhrase);
+        if (!lengthPhrase.isBlank()) sb.append(", ").append(lengthPhrase);
+        sb.append(", ").append(audiencePhrase);
+
+        return sb.toString();
     }
 
     private String buildPrompt(String title, String overview, String genres,
