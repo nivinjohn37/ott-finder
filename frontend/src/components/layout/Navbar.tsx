@@ -248,6 +248,7 @@ export function Navbar() {
             <div className="flex flex-col gap-3">
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
+              <MobileLink to="/discover" label="Discover" />
               <MobileLink to="/features" label="Features" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
               {user && <MobileLink to="/groups" label="Groups" />}
