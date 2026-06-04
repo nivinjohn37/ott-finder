@@ -90,23 +90,33 @@ public class ClaudeAiService implements AiService {
 
     @Override
     public List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language) {
-        if (!isAvailable()) return Collections.emptyList();
-        return suggestMovies(mood, audience, length, language, null);
+        return suggestMovies(mood, audience, length, language, null, null, Collections.emptyList());
     }
 
+    @Override
     public List<AiSuggestion> suggestMovies(String mood, String audience, String length,
                                               String language, String era) {
+        return suggestMovies(mood, audience, length, language, era, null, Collections.emptyList());
+    }
+
+    @Override
+    public List<AiSuggestion> suggestMovies(String mood, String audience, String length,
+                                              String language, String era, String mediaType,
+                                              List<String> excludeTitles) {
         if (!isAvailable()) return Collections.emptyList();
 
-        // Build a natural-language query the same way a person would ask — this is what
-        // Claude responds to best, matching how its training data describes movie taste.
-        String naturalQuery = buildNaturalQuery(mood, audience, language, era, length);
+        String naturalQuery = buildNaturalQuery(mood, audience, language, era, length, mediaType);
+
+        String excludeBlock = (excludeTitles != null && !excludeTitles.isEmpty())
+                ? "\n\nIMPORTANT: The user has already seen these — do NOT recommend them:\n"
+                  + String.join(", ", excludeTitles)
+                : "";
 
         String prompt = """
                 You are an expert film curator and a knowledgeable friend who has watched \
                 thousands of films across all languages. Someone is asking you:
 
-                "%s"
+                "%s"%s
 
                 Give them 8 specific film recommendations. Your rules:
                 1. Only recommend films that are GENUINELY celebrated — award winners, \
@@ -118,11 +128,11 @@ public class ClaudeAiService implements AiService {
                    Vikram, Vinnaithaandi Varuvaayaa, Pariyerum Perumal (Tamil); \
                    Bahubali, Arjun Reddy, RRR (Telugu) — that calibre and recognition level.
                 4. NO obscure, straight-to-streaming-only, or festival-circuit-only films.
-                5. Match the genre/mood and era precisely.
+                5. Match the genre/mood, media type, and era precisely.
 
                 Return ONLY a JSON array, no explanation, no markdown fences:
                 [{"title":"Exact title as it appears on TMDB","year":2021,"language":"Malayalam","reason":"One sentence why this is perfect"}]
-                """.formatted(naturalQuery);
+                """.formatted(naturalQuery, excludeBlock);
 
         String raw = callClaude(prompt);
         if (raw == null) return Collections.emptyList();
@@ -141,7 +151,7 @@ public class ClaudeAiService implements AiService {
     }
 
     private String buildNaturalQuery(String mood, String audience, String language,
-                                      String era, String length) {
+                                      String era, String length, String mediaType) {
         // Map abstract answer values → natural language phrases
         String genre = switch (mood == null ? "" : mood.toLowerCase()) {
             case String s when s.contains("thrill") || s.contains("intense") -> "thriller";
@@ -179,9 +189,16 @@ public class ClaudeAiService implements AiService {
 
         String lang = (language == null || language.toLowerCase().contains("any")) ? "" : language;
 
+        String mediaWord = switch (mediaType == null ? "" : mediaType.toLowerCase()) {
+            case String s when s.contains("tv") || s.contains("series") -> "TV series";
+            case String s when s.contains("animat")                     -> "animated movies";
+            case String s when s.contains("document")                   -> "documentaries";
+            default                                                      -> "movies";
+        };
+
         StringBuilder sb = new StringBuilder("Suggest some really good ");
         if (!lang.isBlank()) sb.append(lang).append(" ");
-        sb.append(genre).append(" movies");
+        sb.append(genre).append(" ").append(mediaWord);
         if (!eraPhrase.isBlank()) sb.append(" ").append(eraPhrase);
         if (!lengthPhrase.isBlank()) sb.append(", ").append(lengthPhrase);
         sb.append(", ").append(audiencePhrase);

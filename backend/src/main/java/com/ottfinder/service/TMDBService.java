@@ -358,24 +358,23 @@ public class TMDBService {
     }
 
     public MovieSearchResult searchByTitle(String title, Integer year) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl + "/search/movie")
+        // Use multi-search so TV series and animation resolve correctly
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl + "/search/multi")
                 .queryParam("api_key", apiKey)
                 .queryParam("query", title)
-                .queryParam("language", "en-US")
-                .queryParam("include_adult", false);
-        if (year != null && year > 1900) builder.queryParam("year", year);
+                .queryParam("language", "en-US");
 
         try {
             List<MovieSearchResult> results = fetchAndMapResults(builder.toUriString());
-            if (!results.isEmpty()) return results.get(0);
-            // Retry without year if first attempt returned nothing
-            if (year != null) {
-                results = fetchAndMapResults(UriComponentsBuilder.fromHttpUrl(baseUrl + "/search/movie")
-                        .queryParam("api_key", apiKey)
-                        .queryParam("query", title)
-                        .queryParam("language", "en-US")
-                        .toUriString());
-                if (!results.isEmpty()) return results.get(0);
+            if (!results.isEmpty()) {
+                // Prefer result whose release year matches Claude's suggestion
+                if (year != null && year > 1900) {
+                    return results.stream()
+                            .filter(r -> r.releaseDate() != null && r.releaseDate().startsWith(year.toString()))
+                            .findFirst()
+                            .orElse(results.get(0));
+                }
+                return results.get(0);
             }
         } catch (Exception ex) {
             log.warn("TMDB title search failed for '{}': {}", title, ex.getMessage());

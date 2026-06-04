@@ -47,11 +47,23 @@ public class MoodSuggestionService {
 
     public List<MovieSuggestion> getSuggestions(String mood, String audience,
                                                   String length, String language, String era) {
+        return getSuggestions(mood, audience, length, language, era, null, Collections.emptyList());
+    }
+
+    public List<MovieSuggestion> getSuggestions(String mood, String audience, String length,
+                                                  String language, String era, String mediaType,
+                                                  List<String> excludeTitles) {
         if (!aiService.isAvailable()) return Collections.emptyList();
 
-        // v2 prefix — bypasses old cached results from the lower-quality prompt
+        // exclude suffix: sorted titles joined so different exclude sets get different cache entries
+        String excludeSuffix = (excludeTitles != null && !excludeTitles.isEmpty())
+                ? ":excl_" + excludeTitles.stream().sorted().map(this::sanitise)
+                        .collect(java.util.stream.Collectors.joining("_"))
+                : "";
+
         String cacheKey = "ai:suggest:v2:" + sanitise(mood) + ":" + sanitise(audience)
-                + ":" + sanitise(length) + ":" + sanitise(language) + ":" + sanitise(era);
+                + ":" + sanitise(length) + ":" + sanitise(language) + ":" + sanitise(era)
+                + ":" + sanitise(mediaType) + excludeSuffix;
 
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
@@ -65,7 +77,9 @@ public class MoodSuggestionService {
         log.info("Generating suggestions — mood={} audience={} length={} language={} era={}",
                 mood, audience, length, language, era);
 
-        List<AiSuggestion> aiSuggestions = aiService.suggestMovies(mood, audience, length, language, era);
+        List<AiSuggestion> aiSuggestions = aiService.suggestMovies(
+                mood, audience, length, language, era, mediaType,
+                excludeTitles != null ? excludeTitles : Collections.emptyList());
         if (aiSuggestions.isEmpty()) return Collections.emptyList();
 
         // Parallel TMDB enrichment — never drop a suggestion if TMDB misses

@@ -33,9 +33,15 @@ public class AiController {
             @RequestParam String audience,
             @RequestParam String length,
             @RequestParam String language,
-            @RequestParam(required = false) String era
+            @RequestParam(required = false) String era,
+            @RequestParam(required = false) String mediaType,
+            @RequestParam(required = false) String exclude
     ) {
-        List<MovieSuggestion> results = moodSuggestionService.getSuggestions(mood, audience, length, language, era);
+        List<String> excludeTitles = (exclude != null && !exclude.isBlank())
+                ? java.util.Arrays.asList(exclude.split(","))
+                : java.util.Collections.emptyList();
+        List<MovieSuggestion> results = moodSuggestionService
+                .getSuggestions(mood, audience, length, language, era, mediaType, excludeTitles);
         return ResponseEntity.ok(ApiResponse.success(results));
     }
 

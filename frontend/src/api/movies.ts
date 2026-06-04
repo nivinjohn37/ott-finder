@@ -40,8 +40,13 @@ export async function getShelves(): Promise<ShelvesResult> {
   }
 }
 
-export async function getMoodSuggestions(answers: MoodAnswers): Promise<MovieSuggestion[]> {
-  const res = await api.get<ApiResponse<MovieSuggestion[]>>('/ai/suggest', { params: answers })
+export async function getMoodSuggestions(
+  answers: MoodAnswers,
+  exclude?: string[]
+): Promise<MovieSuggestion[]> {
+  const params: Record<string, string> = { ...answers }
+  if (exclude && exclude.length > 0) params.exclude = exclude.join(',')
+  const res = await api.get<ApiResponse<MovieSuggestion[]>>('/ai/suggest', { params })
   return res.data.data ?? []
 }
 

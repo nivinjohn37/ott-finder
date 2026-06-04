@@ -49,7 +49,8 @@ export function usePersonFilmography(personId: number | null) {
 
 export function useMoodSuggestions() {
   return useMutation({
-    mutationFn: (answers: MoodAnswers) => getMoodSuggestions(answers),
+    mutationFn: ({ answers, exclude }: { answers: MoodAnswers; exclude?: string[] }) =>
+      getMoodSuggestions(answers, exclude),
   })
 }
 

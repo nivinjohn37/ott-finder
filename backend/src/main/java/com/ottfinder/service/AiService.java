@@ -11,6 +11,8 @@ public interface AiService {
 
     List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language);
     List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language, String era);
+    List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language,
+                                     String era, String mediaType, List<String> excludeTitles);
 
     boolean isAvailable();
 }

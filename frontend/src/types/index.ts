@@ -220,9 +220,10 @@ export interface BadgeDto {
 export interface MoodAnswers {
   mood: string
   audience: string
-  length: string
   language: string
+  mediaType: string
   era: string
+  length: string
 }
 
 export interface MovieSuggestion {
