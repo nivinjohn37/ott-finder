@@ -43,11 +43,12 @@ export async function getShelves(): Promise<ShelvesResult> {
 export async function getReviewSummary(
   tmdbId: number,
   type: string,
-  spoilers: boolean
+  spoilers: boolean,
+  title: string
 ): Promise<ReviewSummary | null> {
   try {
     const res = await api.get<ApiResponse<ReviewSummary>>(`/ai/review-summary/${tmdbId}`, {
-      params: { type, spoilers },
+      params: { type, spoilers, title },
     })
     return res.data.data ?? null
   } catch {

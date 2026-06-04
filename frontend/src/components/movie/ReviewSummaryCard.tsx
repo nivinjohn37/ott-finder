@@ -5,14 +5,15 @@ import { useReviewSummary } from '@/hooks/useMovies'
 interface Props {
   tmdbId: number
   mediaType: string
+  title: string
 }
 
-export function ReviewSummaryCard({ tmdbId, mediaType }: Props) {
+export function ReviewSummaryCard({ tmdbId, mediaType, title }: Props) {
   const [spoilers, setSpoilers] = useState(false)
   const [requested, setRequested] = useState(false)
   const [revealed, setRevealed] = useState(false)
 
-  const { data, isLoading } = useReviewSummary(tmdbId, mediaType, spoilers, requested)
+  const { data, isLoading } = useReviewSummary(tmdbId, mediaType, spoilers, title, requested)
 
   function handleSpoilerToggle(next: boolean) {
     setSpoilers(next)

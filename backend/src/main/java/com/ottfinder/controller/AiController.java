@@ -24,9 +24,10 @@ public class AiController {
     public ResponseEntity<ApiResponse<ReviewSummaryDto>> getReviewSummary(
             @PathVariable int tmdbId,
             @RequestParam(defaultValue = "movie") String type,
-            @RequestParam(defaultValue = "false") boolean spoilers
+            @RequestParam(defaultValue = "false") boolean spoilers,
+            @RequestParam(required = false) String title
     ) {
-        ReviewSummaryDto result = reviewSummaryService.getSummary(tmdbId, type, spoilers);
+        ReviewSummaryDto result = reviewSummaryService.getSummary(tmdbId, type, spoilers, title);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

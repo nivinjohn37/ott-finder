@@ -45,10 +45,10 @@ export function usePersonFilmography(personId: number | null) {
   })
 }
 
-export function useReviewSummary(tmdbId: number, type: string, spoilers: boolean, enabled: boolean) {
+export function useReviewSummary(tmdbId: number, type: string, spoilers: boolean, title: string, enabled: boolean) {
   return useQuery({
     queryKey: ['review-summary', tmdbId, spoilers],
-    queryFn: () => getReviewSummary(tmdbId, type, spoilers),
+    queryFn: () => getReviewSummary(tmdbId, type, spoilers, title),
     enabled,
     staleTime: 48 * 60 * 60 * 1000,
     retry: 1,

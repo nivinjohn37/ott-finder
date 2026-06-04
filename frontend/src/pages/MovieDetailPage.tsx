@@ -371,7 +371,7 @@ export function MovieDetailPage() {
             )}
 
             {/* AI Summary */}
-            <ReviewSummaryCard tmdbId={movie.tmdbId} mediaType={movie.mediaType} />
+            <ReviewSummaryCard tmdbId={movie.tmdbId} mediaType={movie.mediaType} title={movie.title} />
 
             {/* Reviews */}
             <div className="mt-8">
