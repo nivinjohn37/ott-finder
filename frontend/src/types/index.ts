@@ -217,6 +217,18 @@ export interface BadgeDto {
   earnedAt: string
 }
 
+export interface MoodAnswers {
+  mood: string
+  audience: string
+  length: string
+  language: string
+}
+
+export interface MovieSuggestion {
+  movie: MovieSearchResult
+  reason: string
+}
+
 export interface ReviewSummary {
   summary: string
   keywords: string[]

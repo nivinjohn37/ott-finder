@@ -77,6 +77,7 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-6">
               <NavLink to="/" label="Home" />
               <NavLink to="/trending" label="Trending" />
+              <NavLink to="/discover" label="Discover" />
               <NavLink to="/features" label="Features" />
               {user && <NavLink to="/watchlist" label="My Watchlist" />}
               {user && <NavLink to="/groups" label="Groups" />}

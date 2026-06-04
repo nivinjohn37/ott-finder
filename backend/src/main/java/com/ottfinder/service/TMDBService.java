@@ -357,6 +357,32 @@ public class TMDBService {
         }
     }
 
+    public MovieSearchResult searchByTitle(String title, Integer year) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl + "/search/movie")
+                .queryParam("api_key", apiKey)
+                .queryParam("query", title)
+                .queryParam("language", "en-US")
+                .queryParam("include_adult", false);
+        if (year != null && year > 1900) builder.queryParam("year", year);
+
+        try {
+            List<MovieSearchResult> results = fetchAndMapResults(builder.toUriString());
+            if (!results.isEmpty()) return results.get(0);
+            // Retry without year if first attempt returned nothing
+            if (year != null) {
+                results = fetchAndMapResults(UriComponentsBuilder.fromHttpUrl(baseUrl + "/search/movie")
+                        .queryParam("api_key", apiKey)
+                        .queryParam("query", title)
+                        .queryParam("language", "en-US")
+                        .toUriString());
+                if (!results.isEmpty()) return results.get(0);
+            }
+        } catch (Exception ex) {
+            log.warn("TMDB title search failed for '{}': {}", title, ex.getMessage());
+        }
+        return null;
+    }
+
     @SuppressWarnings("unchecked")
     public List<String> getReviews(int tmdbId, String mediaType) {
         String endpoint = "tv".equals(mediaType) ? "/tv/" : "/movie/";

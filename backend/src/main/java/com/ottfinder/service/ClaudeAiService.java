@@ -1,5 +1,8 @@
 package com.ottfinder.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottfinder.dto.response.AiSuggestion;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,6 +24,7 @@ import java.util.stream.Collectors;
 public class ClaudeAiService implements AiService {
 
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${anthropic.api-key:}")
     private String apiKey;
@@ -30,8 +35,10 @@ public class ClaudeAiService implements AiService {
     private static final String MODEL = "claude-haiku-4-5-20251001";
     private static final String API_VERSION = "2023-06-01";
 
-    public ClaudeAiService(@Qualifier("aiRestTemplate") RestTemplate restTemplate) {
+    public ClaudeAiService(@Qualifier("aiRestTemplate") RestTemplate restTemplate,
+                            ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -45,8 +52,10 @@ public class ClaudeAiService implements AiService {
                                   List<String> reviews, boolean spoilers) {
         if (!isAvailable()) return null;
 
-        String prompt = buildPrompt(title, overview, genres, rating, voteCount, year, reviews, spoilers);
+        return callClaude(buildPrompt(title, overview, genres, rating, voteCount, year, reviews, spoilers));
+    }
 
+    private String callClaude(String prompt) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -55,7 +64,7 @@ public class ClaudeAiService implements AiService {
 
             Map<String, Object> body = Map.of(
                     "model", MODEL,
-                    "max_tokens", 512,
+                    "max_tokens", 1024,
                     "messages", List.of(Map.of("role", "user", "content", prompt))
             );
 
@@ -74,9 +83,41 @@ public class ClaudeAiService implements AiService {
                 }
             }
         } catch (Exception ex) {
-            log.warn("Claude API call failed for '{}': {}", title, ex.getMessage());
+            log.warn("Claude API call failed: {}", ex.getMessage());
         }
         return null;
+    }
+
+    @Override
+    public List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language) {
+        if (!isAvailable()) return Collections.emptyList();
+
+        String prompt = """
+                You are a movie recommendation expert. A user wants to watch a movie with these preferences:
+                - Mood/vibe: %s
+                - Watching with: %s
+                - Preferred length: %s
+                - Language: %s
+
+                Recommend exactly 5 movies that perfectly match these preferences.
+                Return ONLY a valid JSON array — no explanation, no markdown, no extra text:
+                [{"title":"Exact Movie Title","year":2019,"reason":"One sentence why this fits perfectly"}]
+                """.formatted(mood, audience, length, language);
+
+        String raw = callClaude(prompt);
+        if (raw == null) return Collections.emptyList();
+
+        try {
+            // Extract JSON array even if Claude wraps it in markdown fences
+            String json = raw.trim();
+            int start = json.indexOf('[');
+            int end = json.lastIndexOf(']');
+            if (start >= 0 && end > start) json = json.substring(start, end + 1);
+            return objectMapper.readValue(json, new TypeReference<List<AiSuggestion>>() {});
+        } catch (Exception ex) {
+            log.warn("Failed to parse Claude suggestion response: {}", ex.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private String buildPrompt(String title, String overview, String genres,

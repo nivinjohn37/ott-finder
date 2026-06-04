@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary } from '@/api/movies'
+import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions } from '@/api/movies'
 import { useAuth } from '@/context/AuthContext'
+import { useMutation } from '@tanstack/react-query'
+import type { MoodAnswers } from '@/types'
 
 export function useSearch(query: string) {
   return useQuery({
@@ -42,6 +44,12 @@ export function usePersonFilmography(personId: number | null) {
     queryFn: () => getPersonFilmography(personId!),
     enabled: personId !== null && personId > 0,
     staleTime: 30 * 60 * 1000,
+  })
+}
+
+export function useMoodSuggestions() {
+  return useMutation({
+    mutationFn: (answers: MoodAnswers) => getMoodSuggestions(answers),
   })
 }
 

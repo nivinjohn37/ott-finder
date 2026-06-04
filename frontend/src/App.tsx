@@ -15,6 +15,7 @@ import { ProfilePage } from '@/pages/ProfilePage'
 import { AdminPage } from '@/pages/AdminPage'
 import { GroupsPage } from '@/pages/GroupsPage'
 import { GroupDetailPage } from '@/pages/GroupDetailPage'
+import { DiscoverPage } from '@/pages/DiscoverPage'
 import { FeaturesPage } from '@/pages/FeaturesPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
@@ -36,6 +37,7 @@ export function App() {
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/groups" element={<GroupsPage />} />
               <Route path="/groups/:groupId" element={<GroupDetailPage />} />
+              <Route path="/discover" element={<DiscoverPage />} />
               <Route path="/features" element={<FeaturesPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
