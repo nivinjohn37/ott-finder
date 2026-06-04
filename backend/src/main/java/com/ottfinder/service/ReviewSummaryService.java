@@ -15,15 +15,18 @@ public class ReviewSummaryService {
 
     private final AiService aiService;
     private final TMDBService tmdbService;
+    private final RedditService redditService;
     private final StringRedisTemplate redisTemplate;
 
     private static final Duration SUMMARY_TTL = Duration.ofHours(48);
 
     public ReviewSummaryService(AiService aiService,
                                  TMDBService tmdbService,
+                                 RedditService redditService,
                                  StringRedisTemplate redisTemplate) {
         this.aiService = aiService;
         this.tmdbService = tmdbService;
+        this.redditService = redditService;
         this.redisTemplate = redisTemplate;
     }
 
@@ -58,11 +61,16 @@ public class ReviewSummaryService {
         Integer votes    = detail != null ? detail.voteCount() : null;
         Integer year     = extractYear(detail);
 
-        // TMDB written reviews (often 0–5 entries — supplementary, not required)
-        List<String> reviews = tmdbService.getReviews(tmdbId, mediaType != null ? mediaType : "movie");
+        // TMDB written reviews + Reddit RSS posts — both supplementary to metadata
+        List<String> tmdbReviews   = tmdbService.getReviews(tmdbId, mediaType != null ? mediaType : "movie");
+        List<String> redditReviews = redditService.getReviews(title, tmdbId);
 
-        log.info("Generating summary for '{}' tmdbId={} — {} TMDB reviews, rating={}/10",
-                title, tmdbId, reviews.size(), rating);
+        List<String> reviews = new java.util.ArrayList<>();
+        reviews.addAll(tmdbReviews);
+        reviews.addAll(redditReviews);
+
+        log.info("Generating summary for '{}' tmdbId={} — tmdb={} reddit={} reviews, rating={}/10",
+                title, tmdbId, tmdbReviews.size(), redditReviews.size(), rating);
 
         String summary = aiService.summariseMovie(title, overview, genres, rating, votes, year, reviews, spoilers);
         if (summary == null) return null;
