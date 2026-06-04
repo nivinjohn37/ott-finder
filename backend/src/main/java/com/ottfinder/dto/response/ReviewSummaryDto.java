@@ -1,3 +1,5 @@
 package com.ottfinder.dto.response;
 
-public record ReviewSummaryDto(String summary, boolean spoilers) {}
+import java.util.List;
+
+public record ReviewSummaryDto(String summary, List<String> keywords, boolean spoilers) {}

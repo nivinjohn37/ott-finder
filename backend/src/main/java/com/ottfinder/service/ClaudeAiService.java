@@ -85,26 +85,37 @@ public class ClaudeAiService implements AiService {
         String meta = buildMetaBlock(title, overview, genres, rating, voteCount, year);
         String reviewBlock = buildReviewBlock(reviews);
 
+        String keywordsInstruction = """
+
+                Then on a NEW LINE write exactly:
+                Keywords: word/phrase, word/phrase, word/phrase, word/phrase, word/phrase
+                Choose 5 short descriptive phrases (2-3 words max each) that best capture \
+                the audience reaction. Examples: visually stunning, emotionally complex, divisive ending, \
+                strong performances, slow pacing.
+                """;
+
         if (spoilers) {
             return """
                     You are a film analyst writing for WatchMate, a streaming discovery app.
 
                     %s
                     %s
-                    Write a 150-200 word audience reception summary. Include plot elements, twists, or endings
-                    if they appear in the reviews. Highlight what audiences specifically praised or criticised
-                    about the story, performances, and direction. Write in third-person. No preamble.
-                    """.formatted(meta, reviewBlock);
+                    Write a 150-200 word audience reception summary in plain prose. No markdown headers, \
+                    no bullet points, no bold text. Include plot elements or twists mentioned in reviews. \
+                    Highlight what audiences praised or criticised about the story, performances, and direction. \
+                    Write in third-person. Output the summary paragraph first.
+                    %s""".formatted(meta, reviewBlock, keywordsInstruction);
         } else {
             return """
                     You are a film analyst writing for WatchMate, a streaming discovery app.
 
                     %s
                     %s
-                    Write a 120-150 word spoiler-free audience reception summary. Do NOT reveal plot twists,
-                    deaths, or endings. Focus on tone, performances, direction, pacing, and overall audience
-                    reaction. Be balanced — mention any notable criticisms too. Write in third-person. No preamble.
-                    """.formatted(meta, reviewBlock);
+                    Write a 120-150 word spoiler-free audience reception summary in plain prose. \
+                    No markdown headers, no bullet points, no bold text. Do NOT reveal plot twists, deaths, \
+                    or endings. Focus on tone, performances, direction, pacing, and overall audience reaction. \
+                    Be balanced — include criticisms too. Write in third-person. Output the summary paragraph first.
+                    %s""".formatted(meta, reviewBlock, keywordsInstruction);
         }
     }
 

@@ -219,6 +219,7 @@ export interface BadgeDto {
 
 export interface ReviewSummary {
   summary: string
+  keywords: string[]
   spoilers: boolean
 }
 
