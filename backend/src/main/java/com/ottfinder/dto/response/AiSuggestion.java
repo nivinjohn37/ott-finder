@@ -1,3 +1,3 @@
 package com.ottfinder.dto.response;
 
-public record AiSuggestion(String title, Integer year, String reason) {}
+public record AiSuggestion(String title, Integer year, String language, String reason) {}

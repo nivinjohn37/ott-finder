@@ -32,9 +32,10 @@ public class AiController {
             @RequestParam String mood,
             @RequestParam String audience,
             @RequestParam String length,
-            @RequestParam String language
+            @RequestParam String language,
+            @RequestParam(required = false) String era
     ) {
-        List<MovieSuggestion> results = moodSuggestionService.getSuggestions(mood, audience, length, language);
+        List<MovieSuggestion> results = moodSuggestionService.getSuggestions(mood, audience, length, language, era);
         return ResponseEntity.ok(ApiResponse.success(results));
     }
 

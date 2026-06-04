@@ -222,11 +222,14 @@ export interface MoodAnswers {
   audience: string
   length: string
   language: string
+  era: string
 }
 
 export interface MovieSuggestion {
   movie: MovieSearchResult
   reason: string
+  movieLanguage: string | null
+  tmdbFound: boolean
 }
 
 export interface ReviewSummary {

@@ -91,18 +91,32 @@ public class ClaudeAiService implements AiService {
     @Override
     public List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language) {
         if (!isAvailable()) return Collections.emptyList();
+        return suggestMovies(mood, audience, length, language, null);
+    }
 
+    public List<AiSuggestion> suggestMovies(String mood, String audience, String length,
+                                              String language, String era) {
+        if (!isAvailable()) return Collections.emptyList();
+
+        String eraLine = (era != null && !era.isBlank()) ? "\n- Era/year preference: " + era : "";
         String prompt = """
-                You are a movie recommendation expert. A user wants to watch a movie with these preferences:
+                You are a world-class movie recommendation expert with deep knowledge of cinema \
+                across all languages including Indian regional films (Malayalam, Tamil, Telugu, \
+                Kannada, Bengali, Marathi) and international cinema.
+
+                A user wants to watch a movie with these preferences:
                 - Mood/vibe: %s
                 - Watching with: %s
                 - Preferred length: %s
-                - Language: %s
+                - Language: %s%s
 
-                Recommend exactly 5 movies that perfectly match these preferences.
-                Return ONLY a valid JSON array — no explanation, no markdown, no extra text:
-                [{"title":"Exact Movie Title","year":2019,"reason":"One sentence why this fits perfectly"}]
-                """.formatted(mood, audience, length, language);
+                Recommend exactly 5 movies that perfectly match ALL these preferences. \
+                Use your own knowledge — do not limit yourself to well-known films. \
+                Include lesser-known gems if they fit better.
+
+                Return ONLY a valid JSON array, no explanation, no markdown:
+                [{"title":"Movie Title as known on TMDB","year":2019,"language":"Malayalam","reason":"One sentence why this fits perfectly"}]
+                """.formatted(mood, audience, length, language, eraLine);
 
         String raw = callClaude(prompt);
         if (raw == null) return Collections.emptyList();

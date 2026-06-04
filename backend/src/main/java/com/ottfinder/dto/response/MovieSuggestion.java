@@ -1,3 +1,8 @@
 package com.ottfinder.dto.response;
 
-public record MovieSuggestion(MovieSearchResult movie, String reason) {}
+public record MovieSuggestion(
+        MovieSearchResult movie,
+        String reason,
+        String movieLanguage,
+        boolean tmdbFound
+) {}

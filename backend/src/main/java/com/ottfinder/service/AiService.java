@@ -10,6 +10,7 @@ public interface AiService {
                           List<String> reviews, boolean spoilers);
 
     List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language);
+    List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language, String era);
 
     boolean isAvailable();
 }

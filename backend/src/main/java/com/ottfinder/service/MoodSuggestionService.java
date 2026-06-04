@@ -9,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -22,7 +21,7 @@ import java.util.concurrent.Executor;
 @Slf4j
 public class MoodSuggestionService {
 
-    private final AiService aiService;
+    private final ClaudeAiService aiService;
     private final TMDBService tmdbService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -30,7 +29,7 @@ public class MoodSuggestionService {
 
     private static final Duration CACHE_TTL = Duration.ofHours(24);
 
-    public MoodSuggestionService(AiService aiService,
+    public MoodSuggestionService(ClaudeAiService aiService,
                                   TMDBService tmdbService,
                                   StringRedisTemplate redisTemplate,
                                   ObjectMapper objectMapper,
@@ -43,11 +42,11 @@ public class MoodSuggestionService {
     }
 
     public List<MovieSuggestion> getSuggestions(String mood, String audience,
-                                                  String length, String language) {
+                                                  String length, String language, String era) {
         if (!aiService.isAvailable()) return Collections.emptyList();
 
         String cacheKey = "ai:suggest:" + sanitise(mood) + ":" + sanitise(audience)
-                + ":" + sanitise(length) + ":" + sanitise(language);
+                + ":" + sanitise(length) + ":" + sanitise(language) + ":" + sanitise(era);
 
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
@@ -58,17 +57,17 @@ public class MoodSuggestionService {
             }
         }
 
-        log.info("Generating suggestions — mood={} audience={} length={} language={}",
-                mood, audience, length, language);
+        log.info("Generating suggestions — mood={} audience={} length={} language={} era={}",
+                mood, audience, length, language, era);
 
-        List<AiSuggestion> aiSuggestions = aiService.suggestMovies(mood, audience, length, language);
+        List<AiSuggestion> aiSuggestions = aiService.suggestMovies(mood, audience, length, language, era);
         if (aiSuggestions.isEmpty()) return Collections.emptyList();
 
-        // Parallel TMDB lookups for each suggestion
+        // Parallel TMDB enrichment — never drop a suggestion if TMDB misses
         List<CompletableFuture<MovieSuggestion>> futures = aiSuggestions.stream()
                 .map(s -> CompletableFuture
-                        .supplyAsync(() -> lookupMovie(s), apiCallExecutor)
-                        .exceptionally(ex -> null))
+                        .supplyAsync(() -> enrich(s), apiCallExecutor)
+                        .exceptionally(ex -> syntheticSuggestion(s)))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
@@ -92,13 +91,29 @@ public class MoodSuggestionService {
         return results;
     }
 
-    private MovieSuggestion lookupMovie(AiSuggestion s) {
-        MovieSearchResult movie = tmdbService.searchByTitle(s.title(), s.year());
-        if (movie == null) {
-            log.debug("TMDB lookup failed for '{}' ({})", s.title(), s.year());
-            return null;
+    private MovieSuggestion enrich(AiSuggestion s) {
+        MovieSearchResult tmdb = tmdbService.searchByTitle(s.title(), s.year());
+        if (tmdb != null) {
+            return new MovieSuggestion(tmdb, s.reason(), s.language(), true);
         }
-        return new MovieSuggestion(movie, s.reason());
+        log.debug("TMDB miss for '{}' ({}) — showing Claude's data", s.title(), s.year());
+        return syntheticSuggestion(s);
+    }
+
+    private MovieSuggestion syntheticSuggestion(AiSuggestion s) {
+        // Build a minimal MovieSearchResult from Claude's data so nothing is dropped
+        MovieSearchResult synthetic = new MovieSearchResult(
+                null,
+                s.title(),
+                null,
+                null,
+                null,
+                s.year() != null ? s.year() + "-01-01" : null,
+                "movie",
+                null,
+                Collections.emptyList()
+        );
+        return new MovieSuggestion(synthetic, s.reason(), s.language(), false);
     }
 
     private String sanitise(String s) {
