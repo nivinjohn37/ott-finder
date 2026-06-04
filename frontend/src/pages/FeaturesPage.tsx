@@ -5,7 +5,7 @@ import {
   Search, Tv2, Bookmark, Star, Users, Trophy, Lightbulb,
   User, Award, Palette, TrendingUp, Zap, ArrowRight, Play,
   CheckCircle2, Heart, Globe, Smartphone, Share2, MoreHorizontal,
-  Sparkles, Clock, ThumbsUp, History, Settings2, Bell, Brain, Rocket,
+  Sparkles, Clock, ThumbsUp, History, Settings2, Bell, Brain, Rocket, Compass, FileText,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
@@ -200,6 +200,22 @@ const FEATURES = [
     bg: 'rgba(56,189,248,0.08)',
     border: 'rgba(56,189,248,0.2)',
   },
+  {
+    icon: FileText,
+    title: 'AI Review Summary',
+    description: 'Claude reads reviews from TMDB and Reddit and writes a clean spoiler-free summary with keyword chips. Flip to Full mode for plot details.',
+    color: '#A78BFA',
+    bg: 'rgba(167,139,250,0.08)',
+    border: 'rgba(167,139,250,0.2)',
+  },
+  {
+    icon: Compass,
+    title: 'Mood-based Discovery',
+    description: 'Answer 5 quick questions — vibe, company, language (including Malayalam, Tamil, Telugu), era, and length — and Claude picks 5 perfect movies from its world knowledge.',
+    color: '#EC4899',
+    bg: 'rgba(236,72,153,0.08)',
+    border: 'rgba(236,72,153,0.2)',
+  },
 ]
 
 const COMING_SOON = [
@@ -211,15 +227,9 @@ const COMING_SOON = [
   },
   {
     icon: Brain,
-    title: 'AI Recommendations',
-    description: '"Because you watched X" — Claude-powered suggestions based on your watch history and ratings.',
+    title: '"Because You Watched X"',
+    description: 'Claude-powered recommendations based on your watch history — "You watched Interstellar, here are 5 similar films."',
     color: '#8B5CF6',
-  },
-  {
-    icon: Sparkles,
-    title: 'Mood-based Discovery',
-    description: 'Answer a few quick questions about your mood and who you\'re watching with — get a perfect shortlist.',
-    color: '#EC4899',
   },
   {
     icon: Globe,
@@ -328,9 +338,9 @@ export function FeaturesPage() {
             transition={{ duration: 0.6, delay: 0.25 }}
             className="text-cinema-muted text-lg sm:text-xl font-body leading-relaxed max-w-2xl mx-auto mb-10"
           >
-            WatchMate tells you where to stream any movie in India, surfaces personalised
-            recommendations, helps you track what you've watched, and lets you compete
-            with friends on who watches the most.
+            WatchMate tells you where to stream any movie in India, uses Claude AI to
+            surface personalised recommendations and review summaries, helps you track
+            what you've watched, and lets you compete with friends on who watches the most.
           </motion.p>
 
           {/* CTAs */}
