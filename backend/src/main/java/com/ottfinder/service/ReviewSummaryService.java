@@ -1,14 +1,12 @@
 package com.ottfinder.service;
 
-import com.ottfinder.dto.response.ReviewSummaryDto;
 import com.ottfinder.dto.response.MovieDetail;
-import com.ottfinder.repository.MovieRepository;
+import com.ottfinder.dto.response.ReviewSummaryDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -17,28 +15,21 @@ public class ReviewSummaryService {
 
     private final AiService aiService;
     private final TMDBService tmdbService;
-    private final RedditService redditService;
-    private final MovieRepository movieRepository;
     private final StringRedisTemplate redisTemplate;
 
     private static final Duration SUMMARY_TTL = Duration.ofHours(48);
-    private static final int MIN_REVIEWS = 1;
 
     public ReviewSummaryService(AiService aiService,
                                  TMDBService tmdbService,
-                                 RedditService redditService,
-                                 MovieRepository movieRepository,
                                  StringRedisTemplate redisTemplate) {
         this.aiService = aiService;
         this.tmdbService = tmdbService;
-        this.redditService = redditService;
-        this.movieRepository = movieRepository;
         this.redisTemplate = redisTemplate;
     }
 
     public ReviewSummaryDto getSummary(int tmdbId, String mediaType, boolean spoilers, String titleHint) {
         if (!aiService.isAvailable()) {
-            log.warn("AI service unavailable — ANTHROPIC_API_KEY not set");
+            log.warn("Claude unavailable — ANTHROPIC_API_KEY missing or blank");
             return null;
         }
 
@@ -48,47 +39,43 @@ public class ReviewSummaryService {
             return new ReviewSummaryDto(cached, spoilers);
         }
 
-        // Resolve title: frontend hint → DB → TMDB (in that order)
-        String title = resolveTitle(tmdbId, mediaType, titleHint);
-        if (title == null) {
+        // Fetch full movie metadata from TMDB (cached 24h by TMDBService)
+        MovieDetail detail = tmdbService.getDetails(tmdbId, mediaType != null ? mediaType : "movie");
+        if (detail == null && !"tv".equals(mediaType)) {
+            detail = tmdbService.getDetails(tmdbId, "tv");
+        }
+
+        String title = detail != null ? detail.title() : titleHint;
+        if (title == null || title.isBlank()) {
             log.warn("Could not resolve title for tmdbId={}", tmdbId);
             return null;
         }
 
-        List<String> tmdbReviews = tmdbService.getReviews(tmdbId, mediaType);
-        List<String> redditReviews = redditService.getReviews(title, tmdbId);
+        String overview  = detail != null ? detail.overview() : null;
+        String genres    = detail != null && detail.genres() != null
+                           ? String.join(", ", detail.genres()) : null;
+        Double rating    = detail != null ? detail.voteAverage() : null;
+        Integer votes    = detail != null ? detail.voteCount() : null;
+        Integer year     = extractYear(detail);
 
-        List<String> allReviews = new ArrayList<>();
-        allReviews.addAll(tmdbReviews);
-        allReviews.addAll(redditReviews);
+        // TMDB written reviews (often 0–5 entries — supplementary, not required)
+        List<String> reviews = tmdbService.getReviews(tmdbId, mediaType != null ? mediaType : "movie");
 
-        log.info("Generating summary for '{}' (tmdbId={}) — tmdb={} reddit={} reviews",
-                title, tmdbId, tmdbReviews.size(), redditReviews.size());
+        log.info("Generating summary for '{}' tmdbId={} — {} TMDB reviews, rating={}/10",
+                title, tmdbId, reviews.size(), rating);
 
-        if (allReviews.size() < MIN_REVIEWS) {
-            log.debug("No reviews found for tmdbId={}", tmdbId);
-            return null;
-        }
-
-        String summary = aiService.reviewSummary(title, allReviews, spoilers);
+        String summary = aiService.summariseMovie(title, overview, genres, rating, votes, year, reviews, spoilers);
         if (summary == null) return null;
 
         redisTemplate.opsForValue().set(cacheKey, summary, SUMMARY_TTL);
         return new ReviewSummaryDto(summary, spoilers);
     }
 
-    private String resolveTitle(int tmdbId, String mediaType, String titleHint) {
-        if (titleHint != null && !titleHint.isBlank()) return titleHint;
-
-        String fromDb = movieRepository.findByTmdbId(tmdbId).map(m -> m.getTitle()).orElse(null);
-        if (fromDb != null) return fromDb;
-
-        // Fallback: fetch from TMDB (only if movie not in our DB yet)
+    private Integer extractYear(MovieDetail detail) {
+        if (detail == null || detail.releaseDate() == null || detail.releaseDate().length() < 4) return null;
         try {
-            MovieDetail detail = tmdbService.getDetails(tmdbId, mediaType);
-            return detail != null ? detail.title() : null;
-        } catch (Exception ex) {
-            log.warn("TMDB title fallback failed for tmdbId={}: {}", tmdbId, ex.getMessage());
+            return Integer.parseInt(detail.releaseDate().substring(0, 4));
+        } catch (NumberFormatException ex) {
             return null;
         }
     }

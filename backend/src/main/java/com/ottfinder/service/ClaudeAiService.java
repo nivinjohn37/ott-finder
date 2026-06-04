@@ -27,7 +27,7 @@ public class ClaudeAiService implements AiService {
     @Value("${anthropic.base-url:https://api.anthropic.com}")
     private String baseUrl;
 
-    private static final String MODEL = "claude-sonnet-4-6";
+    private static final String MODEL = "claude-haiku-4-5-20251001";
     private static final String API_VERSION = "2023-06-01";
 
     public ClaudeAiService(@Qualifier("aiRestTemplate") RestTemplate restTemplate) {
@@ -40,15 +40,12 @@ public class ClaudeAiService implements AiService {
     }
 
     @Override
-    public String reviewSummary(String movieTitle, List<String> reviews, boolean spoilers) {
-        if (!isAvailable() || reviews.isEmpty()) return null;
+    public String summariseMovie(String title, String overview, String genres,
+                                  Double rating, Integer voteCount, Integer year,
+                                  List<String> reviews, boolean spoilers) {
+        if (!isAvailable()) return null;
 
-        String reviewsText = reviews.stream()
-                .limit(15)
-                .map(r -> "- " + r.trim().replaceAll("\\s+", " "))
-                .collect(Collectors.joining("\n"));
-
-        String prompt = buildPrompt(movieTitle, reviewsText, spoilers);
+        String prompt = buildPrompt(title, overview, genres, rating, voteCount, year, reviews, spoilers);
 
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -77,33 +74,61 @@ public class ClaudeAiService implements AiService {
                 }
             }
         } catch (Exception ex) {
-            log.warn("Claude API call failed for '{}': {}", movieTitle, ex.getMessage());
+            log.warn("Claude API call failed for '{}': {}", title, ex.getMessage());
         }
         return null;
     }
 
-    private String buildPrompt(String movieTitle, String reviewsText, boolean spoilers) {
+    private String buildPrompt(String title, String overview, String genres,
+                                Double rating, Integer voteCount, Integer year,
+                                List<String> reviews, boolean spoilers) {
+        String meta = buildMetaBlock(title, overview, genres, rating, voteCount, year);
+        String reviewBlock = buildReviewBlock(reviews);
+
         if (spoilers) {
             return """
-                    You are a movie review summariser. Summarise the following reviews for "%s" in 150-200 words.
-                    Include all plot points, twists, and endings mentioned in the reviews.
-                    Focus on specific story elements audiences praised or criticised.
-                    Write in a neutral, third-person tone. Do not use "I" or "we". Output only the summary — no preamble.
+                    You are a film analyst writing for WatchMate, a streaming discovery app.
 
-                    Reviews:
                     %s
-                    """.formatted(movieTitle, reviewsText);
+                    %s
+                    Write a 150-200 word audience reception summary. Include plot elements, twists, or endings
+                    if they appear in the reviews. Highlight what audiences specifically praised or criticised
+                    about the story, performances, and direction. Write in third-person. No preamble.
+                    """.formatted(meta, reviewBlock);
         } else {
             return """
-                    You are a movie review summariser. Summarise the following reviews for "%s" in 120-150 words.
-                    Rules: Do NOT reveal plot twists, major reveals, character deaths, or endings.
-                    Focus on: overall tone, performances, direction, pacing, and whether audiences enjoyed it.
-                    Be balanced — mention both positives and negatives if present.
-                    Write in a neutral, third-person tone. Do not use "I" or "we". Output only the summary — no preamble.
+                    You are a film analyst writing for WatchMate, a streaming discovery app.
 
-                    Reviews:
                     %s
-                    """.formatted(movieTitle, reviewsText);
+                    %s
+                    Write a 120-150 word spoiler-free audience reception summary. Do NOT reveal plot twists,
+                    deaths, or endings. Focus on tone, performances, direction, pacing, and overall audience
+                    reaction. Be balanced — mention any notable criticisms too. Write in third-person. No preamble.
+                    """.formatted(meta, reviewBlock);
         }
+    }
+
+    private String buildMetaBlock(String title, String overview, String genres,
+                                   Double rating, Integer voteCount, Integer year) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Movie: ").append(title);
+        if (year != null) sb.append(" (").append(year).append(")");
+        if (genres != null && !genres.isBlank()) sb.append("\nGenres: ").append(genres);
+        if (rating != null && voteCount != null && voteCount > 0) {
+            sb.append(String.format("\nTMDB Rating: %.1f/10 from %,d votes", rating, voteCount));
+        }
+        if (overview != null && !overview.isBlank()) {
+            sb.append("\nOverview: ").append(overview);
+        }
+        return sb.toString();
+    }
+
+    private String buildReviewBlock(List<String> reviews) {
+        if (reviews == null || reviews.isEmpty()) return "";
+        String joined = reviews.stream()
+                .limit(10)
+                .map(r -> "- " + r.trim().replaceAll("\\s+", " "))
+                .collect(Collectors.joining("\n"));
+        return "\nAudience reviews:\n" + joined;
     }
 }
