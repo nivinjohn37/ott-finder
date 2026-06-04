@@ -41,11 +41,16 @@ public class MoodSuggestionService {
         this.apiCallExecutor = apiCallExecutor;
     }
 
+    // Minimum quality bar for TMDB-verified results
+    private static final double MIN_VOTE_AVG   = 6.0;
+    private static final int    TARGET_RESULTS = 5;
+
     public List<MovieSuggestion> getSuggestions(String mood, String audience,
                                                   String length, String language, String era) {
         if (!aiService.isAvailable()) return Collections.emptyList();
 
-        String cacheKey = "ai:suggest:" + sanitise(mood) + ":" + sanitise(audience)
+        // v2 prefix — bypasses old cached results from the lower-quality prompt
+        String cacheKey = "ai:suggest:v2:" + sanitise(mood) + ":" + sanitise(audience)
                 + ":" + sanitise(length) + ":" + sanitise(language) + ":" + sanitise(era);
 
         String cached = redisTemplate.opsForValue().get(cacheKey);
@@ -75,10 +80,31 @@ public class MoodSuggestionService {
                 .exceptionally(ex -> null)
                 .join();
 
-        List<MovieSuggestion> results = futures.stream()
+        List<MovieSuggestion> all = futures.stream()
                 .map(f -> f.getNow(null))
                 .filter(Objects::nonNull)
                 .toList();
+
+        // Split into quality-verified (TMDB found + good score) and fallback
+        List<MovieSuggestion> quality = all.stream()
+                .filter(s -> s.tmdbFound()
+                        && s.movie().voteAverage() != null
+                        && s.movie().voteAverage() >= MIN_VOTE_AVG)
+                .sorted((a, b) -> Double.compare(qualityScore(b), qualityScore(a)))
+                .toList();
+
+        List<MovieSuggestion> fallback = all.stream()
+                .filter(s -> !quality.contains(s))
+                .toList();
+
+        // Take up to TARGET_RESULTS from quality, pad with fallback if needed
+        List<MovieSuggestion> results = new java.util.ArrayList<>();
+        results.addAll(quality.stream().limit(TARGET_RESULTS).toList());
+        if (results.size() < TARGET_RESULTS) {
+            fallback.stream()
+                    .limit(TARGET_RESULTS - results.size())
+                    .forEach(results::add);
+        }
 
         if (!results.isEmpty()) {
             try {
@@ -114,6 +140,10 @@ public class MoodSuggestionService {
                 Collections.emptyList()
         );
         return new MovieSuggestion(synthetic, s.reason(), s.language(), false);
+    }
+
+    private double qualityScore(MovieSuggestion s) {
+        return s.movie().voteAverage() != null ? s.movie().voteAverage() : 0;
     }
 
     private String sanitise(String s) {

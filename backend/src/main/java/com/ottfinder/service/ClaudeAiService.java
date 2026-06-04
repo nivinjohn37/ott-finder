@@ -100,22 +100,29 @@ public class ClaudeAiService implements AiService {
 
         String eraLine = (era != null && !era.isBlank()) ? "\n- Era/year preference: " + era : "";
         String prompt = """
-                You are a world-class movie recommendation expert with deep knowledge of cinema \
-                across all languages including Indian regional films (Malayalam, Tamil, Telugu, \
-                Kannada, Bengali, Marathi) and international cinema.
+                You are a world-class movie recommendation expert. Your job is to recommend \
+                movies that users will ACTUALLY enjoy and recognise.
 
-                A user wants to watch a movie with these preferences:
+                STRICT QUALITY RULES — follow these without exception:
+                1. Only recommend movies that are WELL-KNOWN and WIDELY CELEBRATED — mainstream \
+                   hits, cult classics, or critically acclaimed films with a proven audience.
+                2. Every film must have a strong reputation: at least 7.0/10 on IMDb, or be a \
+                   recognised award winner or beloved classic in its language.
+                3. For Indian regional languages, recommend only the most celebrated titles — \
+                   films that fans of that language would instantly recognise.
+                4. NO obscure, straight-to-streaming, or little-known films. If a film has fewer \
+                   than 5,000 IMDb votes, do not include it.
+                5. Prioritise films the user would be excited to discover or revisit.
+
+                User preferences:
                 - Mood/vibe: %s
                 - Watching with: %s
                 - Preferred length: %s
                 - Language: %s%s
 
-                Recommend exactly 5 movies that perfectly match ALL these preferences. \
-                Use your own knowledge — do not limit yourself to well-known films. \
-                Include lesser-known gems if they fit better.
-
-                Return ONLY a valid JSON array, no explanation, no markdown:
-                [{"title":"Movie Title as known on TMDB","year":2019,"language":"Malayalam","reason":"One sentence why this fits perfectly"}]
+                Recommend exactly 8 movies that best match these preferences while meeting ALL \
+                quality rules above. Return ONLY a valid JSON array, no explanation, no markdown:
+                [{"title":"Exact Movie Title as on TMDB","year":2019,"language":"Malayalam","reason":"One sentence why this fits"}]
                 """.formatted(mood, audience, length, language, eraLine);
 
         String raw = callClaude(prompt);
