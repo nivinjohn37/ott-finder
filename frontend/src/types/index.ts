@@ -217,6 +217,11 @@ export interface BadgeDto {
   earnedAt: string
 }
 
+export interface ReviewSummary {
+  summary: string
+  spoilers: boolean
+}
+
 export interface ShelvesResult {
   topRatedNetflix: MovieSearchResult[]
   hiddenGems: MovieSearchResult[]

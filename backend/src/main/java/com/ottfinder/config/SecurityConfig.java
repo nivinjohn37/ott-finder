@@ -35,7 +35,7 @@ public class SecurityConfig {
             http
                     .addFilterBefore(firebaseAuthFilter, UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers("/api/health", "/api/movies/**", "/api/user/avatar/*").permitAll()
+                            .requestMatchers("/api/health", "/api/movies/**", "/api/user/avatar/*", "/api/ai/**").permitAll()
                             .requestMatchers("/api/watchlist/**", "/api/user/**", "/api/admin/**", "/api/groups/**").authenticated()
                             .anyRequest().denyAll()
                     );

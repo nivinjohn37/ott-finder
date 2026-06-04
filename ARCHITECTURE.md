@@ -464,6 +464,10 @@ POST /api/user/avatar                  ← Auth required (multipart)
 GET  /api/user/avatar/{uid}            ← Public
      → 200 image bytes
 
+GET  /api/ai/review-summary/{tmdbId}?type={movie|tv}&spoilers={true|false}
+     → 200 ApiResponse<ReviewSummaryDto>  ← No auth required
+     ← Claude API; returns null if < 3 reviews; cached 48h (ai:review-summary:{tmdbId}:{free|full})
+
 GET  /api/admin/stats                  ← Auth required, admin role
      → 200 ApiResponse<AdminStats>
 
@@ -520,6 +524,8 @@ POST /api/admin/availability           ← Auth required, admin role
 | `tmdb:person:{personId}` | 24h | TTL only |
 | `ott:availability:{tmdbId}` | 6h | TTL only |
 | `watchlist:user:{userId}` | 1h | add/remove/watched toggle |
+| `ai:review-summary:{tmdbId}:free` | 48h | TTL only |
+| `ai:review-summary:{tmdbId}:full` | 48h | TTL only |
 
 ### Security
 

@@ -1,12 +1,10 @@
 package com.ottfinder.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottfinder.dto.response.WatchlistItem;
 import com.ottfinder.entity.Movie;
 import com.ottfinder.entity.User;
 import com.ottfinder.entity.Watchlist;
 import com.ottfinder.exception.WatchlistLimitException;
-import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.UserRepository;
 import com.ottfinder.repository.WatchlistRepository;
@@ -16,11 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -33,11 +29,9 @@ class WatchlistServiceTest {
     @Mock WatchlistRepository watchlistRepository;
     @Mock UserRepository userRepository;
     @Mock MovieRepository movieRepository;
-    @Mock MovieAvailabilityRepository availabilityRepository;
     @Mock TMDBService tmdbService;
-    @Mock StringRedisTemplate redisTemplate;
-    @Mock ValueOperations<String, String> valueOps;
-    @Mock ObjectMapper objectMapper;
+    @Mock OTTAvailabilityService ottAvailabilityService;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @InjectMocks WatchlistService watchlistService;
 
@@ -55,14 +49,15 @@ class WatchlistServiceTest {
         when(movieRepository.findByTmdbId(693134)).thenReturn(Optional.of(movie));
         Watchlist saved = Watchlist.builder().id(1L).user(user).movie(movie).build();
         when(watchlistRepository.save(any())).thenReturn(saved);
-        when(availabilityRepository.findByMovieIdWithPlatform(10L)).thenReturn(Collections.emptyList());
-        when(redisTemplate.delete(anyString())).thenReturn(true);
+        when(ottAvailabilityService.findAvailability(anyInt(), anyString(), anyString()))
+                .thenReturn(Collections.emptyList());
 
         WatchlistItem result = watchlistService.addToWatchlist(principal, 693134, "movie");
 
         assertThat(result.id()).isEqualTo(1L);
         assertThat(result.movie().title()).isEqualTo("Dune: Part Two");
         verify(watchlistRepository).save(any());
+        verify(eventPublisher).publishEvent(any(BadgeCheckEvent.class));
     }
 
     @Test
@@ -77,29 +72,28 @@ class WatchlistServiceTest {
     }
 
     @Test
-    void getWatchlist_cacheHit_returnsCachedData() throws Exception {
+    void getWatchlist_returnsItemsFromRepository() {
+        Watchlist entry = Watchlist.builder().id(1L).user(user).movie(movie).build();
         when(userRepository.findByFirebaseUid("uid-123")).thenReturn(Optional.of(user));
-        when(redisTemplate.opsForValue()).thenReturn(valueOps);
-        when(valueOps.get("watchlist:user:1")).thenReturn("[{\"id\":1}]");
-        when(objectMapper.readValue(anyString(), any(com.fasterxml.jackson.core.type.TypeReference.class)))
-                .thenReturn(List.of());
+        when(watchlistRepository.findByUserIdWithMovie(1L)).thenReturn(java.util.List.of(entry));
+        when(ottAvailabilityService.findAvailability(anyInt(), anyString(), anyString()))
+                .thenReturn(Collections.emptyList());
 
-        watchlistService.getWatchlist(principal);
+        java.util.List<WatchlistItem> result = watchlistService.getWatchlist(principal);
 
-        verify(watchlistRepository, never()).findByUserIdWithMovie(any());
+        assertThat(result).hasSize(1);
+        verify(watchlistRepository).findByUserIdWithMovie(1L);
     }
 
     @Test
-    void removeFromWatchlist_invalidatesCache() {
+    void removeFromWatchlist_deletesEntry() {
         Watchlist entry = Watchlist.builder().id(5L).user(user).movie(movie).build();
         when(userRepository.findByFirebaseUid("uid-123")).thenReturn(Optional.of(user));
         when(watchlistRepository.findById(5L)).thenReturn(Optional.of(entry));
-        when(redisTemplate.delete(anyString())).thenReturn(true);
 
         watchlistService.removeFromWatchlist(principal, 5L);
 
         verify(watchlistRepository).delete(entry);
-        verify(redisTemplate).delete("watchlist:user:1");
     }
 
     @Test
@@ -110,8 +104,8 @@ class WatchlistServiceTest {
         when(movieRepository.findByTmdbId(693134)).thenReturn(Optional.of(movie));
         Watchlist saved = Watchlist.builder().id(1L).user(user).movie(movie).build();
         when(watchlistRepository.save(any(Watchlist.class))).thenReturn(saved);
-        when(availabilityRepository.findByMovieIdWithPlatform(10L)).thenReturn(Collections.emptyList());
-        when(redisTemplate.delete(anyString())).thenReturn(true);
+        when(ottAvailabilityService.findAvailability(anyInt(), anyString(), anyString()))
+                .thenReturn(Collections.emptyList());
 
         watchlistService.addToWatchlist(principal, 693134, "movie");
 

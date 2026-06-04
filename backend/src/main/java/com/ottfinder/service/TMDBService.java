@@ -357,6 +357,29 @@ public class TMDBService {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public List<String> getReviews(int tmdbId, String mediaType) {
+        String endpoint = "tv".equals(mediaType) ? "/tv/" : "/movie/";
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + endpoint + tmdbId + "/reviews")
+                .queryParam("api_key", apiKey)
+                .queryParam("language", "en-US")
+                .toUriString();
+        try {
+            Map<String, Object> response = fetchMap(url);
+            if (response == null) return Collections.emptyList();
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+            if (results == null) return Collections.emptyList();
+            return results.stream()
+                    .map(r -> (String) r.get("content"))
+                    .filter(c -> c != null && !c.isBlank())
+                    .limit(10)
+                    .toList();
+        } catch (Exception ex) {
+            log.warn("TMDB reviews fetch failed for tmdbId={}: {}", tmdbId, ex.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     private double toDoubleOrZero(Object val) {
         if (val instanceof Number n) return n.doubleValue();
         return 0.0;

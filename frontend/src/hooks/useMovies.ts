@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves } from '@/api/movies'
+import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary } from '@/api/movies'
 import { useAuth } from '@/context/AuthContext'
 
 export function useSearch(query: string) {
@@ -42,6 +42,16 @@ export function usePersonFilmography(personId: number | null) {
     queryFn: () => getPersonFilmography(personId!),
     enabled: personId !== null && personId > 0,
     staleTime: 30 * 60 * 1000,
+  })
+}
+
+export function useReviewSummary(tmdbId: number, type: string, spoilers: boolean, enabled: boolean) {
+  return useQuery({
+    queryKey: ['review-summary', tmdbId, spoilers],
+    queryFn: () => getReviewSummary(tmdbId, type, spoilers),
+    enabled,
+    staleTime: 48 * 60 * 60 * 1000,
+    retry: 1,
   })
 }
 

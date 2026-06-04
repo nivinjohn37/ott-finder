@@ -1,4 +1,4 @@
-import type { ApiResponse, MovieDetail, MovieSearchResult, PersonFilmography, ShelvesResult } from '@/types'
+import type { ApiResponse, MovieDetail, MovieSearchResult, PersonFilmography, ReviewSummary, ShelvesResult } from '@/types'
 import api from './axios'
 
 export async function searchMovies(q: string): Promise<MovieSearchResult[]> {
@@ -37,6 +37,21 @@ export async function getShelves(): Promise<ShelvesResult> {
     return res.data.data ?? empty
   } catch {
     return empty
+  }
+}
+
+export async function getReviewSummary(
+  tmdbId: number,
+  type: string,
+  spoilers: boolean
+): Promise<ReviewSummary | null> {
+  try {
+    const res = await api.get<ApiResponse<ReviewSummary>>(`/ai/review-summary/${tmdbId}`, {
+      params: { type, spoilers },
+    })
+    return res.data.data ?? null
+  } catch {
+    return null
   }
 }
 

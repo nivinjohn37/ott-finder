@@ -4,6 +4,7 @@ import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLi
 import { ActorDrawer } from '@/components/movie/ActorDrawer'
 import { GenreDrawer } from '@/components/movie/GenreDrawer'
 import { ReviewSection } from '@/components/movie/ReviewSection'
+import { ReviewSummaryCard } from '@/components/movie/ReviewSummaryCard'
 import { useMovieDetail } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist, useWatchlist } from '@/hooks/useWatchlist'
 import { useMyGroups, useAddToGroupWatchlist } from '@/hooks/useGroups'
@@ -368,6 +369,9 @@ export function MovieDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* AI Summary */}
+            <ReviewSummaryCard tmdbId={movie.tmdbId} mediaType={movie.mediaType} />
 
             {/* Reviews */}
             <div className="mt-8">
