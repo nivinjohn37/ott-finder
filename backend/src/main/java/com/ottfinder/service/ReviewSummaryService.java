@@ -1,9 +1,7 @@
 package com.ottfinder.service;
 
 import com.ottfinder.dto.response.ReviewSummaryDto;
-import com.ottfinder.entity.Review;
 import com.ottfinder.repository.MovieRepository;
-import com.ottfinder.repository.ReviewRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -11,7 +9,6 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -19,21 +16,21 @@ public class ReviewSummaryService {
 
     private final AiService aiService;
     private final TMDBService tmdbService;
-    private final ReviewRepository reviewRepository;
+    private final RedditService redditService;
     private final MovieRepository movieRepository;
     private final StringRedisTemplate redisTemplate;
 
     private static final Duration SUMMARY_TTL = Duration.ofHours(48);
-    private static final int MIN_REVIEWS = 3;
+    private static final int MIN_REVIEWS = 1;
 
     public ReviewSummaryService(AiService aiService,
                                  TMDBService tmdbService,
-                                 ReviewRepository reviewRepository,
+                                 RedditService redditService,
                                  MovieRepository movieRepository,
                                  StringRedisTemplate redisTemplate) {
         this.aiService = aiService;
         this.tmdbService = tmdbService;
-        this.reviewRepository = reviewRepository;
+        this.redditService = redditService;
         this.movieRepository = movieRepository;
         this.redisTemplate = redisTemplate;
     }
@@ -47,25 +44,24 @@ public class ReviewSummaryService {
             return new ReviewSummaryDto(cached, spoilers);
         }
 
-        List<String> tmdbReviews = tmdbService.getReviews(tmdbId, mediaType);
+        String title = movieRepository.findByTmdbId(tmdbId)
+                .map(m -> m.getTitle())
+                .orElse(null);
 
-        List<String> ownReviews = reviewRepository.findByMovieTmdbId(tmdbId).stream()
-                .filter(r -> r.getNote() != null && !r.getNote().isBlank())
-                .map(Review::getNote)
-                .collect(Collectors.toList());
+        if (title == null) return null;
+
+        List<String> tmdbReviews = tmdbService.getReviews(tmdbId, mediaType);
+        List<String> redditReviews = redditService.getReviews(title, tmdbId);
 
         List<String> allReviews = new ArrayList<>();
         allReviews.addAll(tmdbReviews);
-        allReviews.addAll(ownReviews);
+        allReviews.addAll(redditReviews);
 
         if (allReviews.size() < MIN_REVIEWS) {
-            log.debug("Not enough reviews for tmdbId={} (have {}, need {})", tmdbId, allReviews.size(), MIN_REVIEWS);
+            log.debug("No reviews found for tmdbId={} (tmdb={}, reddit={})", tmdbId,
+                    tmdbReviews.size(), redditReviews.size());
             return null;
         }
-
-        String title = movieRepository.findByTmdbId(tmdbId)
-                .map(m -> m.getTitle())
-                .orElse("this movie");
 
         String summary = aiService.reviewSummary(title, allReviews, spoilers);
         if (summary == null) return null;
