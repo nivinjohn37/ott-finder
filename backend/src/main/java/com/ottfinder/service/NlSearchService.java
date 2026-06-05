@@ -44,6 +44,15 @@ public class NlSearchService {
     }
 
     public List<MovieSuggestion> search(String query) {
+        try {
+            return doSearch(query);
+        } catch (Exception ex) {
+            log.error("NL search failed for query='{}': {} — {}", query, ex.getClass().getName(), ex.getMessage(), ex);
+            return Collections.emptyList();
+        }
+    }
+
+    private List<MovieSuggestion> doSearch(String query) {
         if (!aiService.isAvailable() || query == null || query.isBlank()) return Collections.emptyList();
 
         String cacheKey = "ai:nlsearch:" + sanitise(query);
@@ -106,6 +115,7 @@ public class NlSearchService {
 
         return results;
     }
+
 
     private MovieSuggestion enrich(AiSuggestion s) {
         MovieSearchResult tmdb = tmdbService.searchByTitle(s.title(), s.year());
