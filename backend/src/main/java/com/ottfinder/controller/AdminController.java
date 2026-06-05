@@ -7,6 +7,7 @@ import com.ottfinder.dto.response.AdminContentStats;
 import com.ottfinder.dto.response.AdminReviewDto;
 import com.ottfinder.dto.response.AdminStats;
 import com.ottfinder.dto.response.AdminUserDto;
+import com.ottfinder.dto.response.AiUsageStatsDto;
 import com.ottfinder.dto.response.ApiResponse;
 import com.ottfinder.dto.response.OttAvailability;
 import com.ottfinder.entity.Movie;
@@ -14,6 +15,7 @@ import com.ottfinder.entity.MovieAvailability;
 import com.ottfinder.entity.OttPlatform;
 import com.ottfinder.entity.Review;
 import com.ottfinder.entity.User;
+import com.ottfinder.repository.AiUsageLogRepository;
 import com.ottfinder.repository.MovieAvailabilityRepository;
 import com.ottfinder.repository.MovieRepository;
 import com.ottfinder.repository.OttPlatformRepository;
@@ -54,6 +56,55 @@ public class AdminController {
     private final WatchGroupRepository watchGroupRepository;
     private final MovieSearchService movieSearchService;
     private final StringRedisTemplate redisTemplate;
+    private final AiUsageLogRepository aiUsageLogRepository;
+
+    @GetMapping("/ai-usage")
+    public ResponseEntity<ApiResponse<AiUsageStatsDto>> getAiUsage(
+            @AuthenticationPrincipal FirebasePrincipal principal) {
+        if (!isAdmin(principal)) {
+            return ResponseEntity.status(403).body(ApiResponse.error("FORBIDDEN", "Admin access required"));
+        }
+
+        java.time.OffsetDateTime now   = java.time.OffsetDateTime.now();
+        java.time.OffsetDateTime today = now.truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+        java.time.OffsetDateTime week  = now.minusDays(7);
+
+        long totalToday = aiUsageLogRepository.countByCreatedAtAfter(today);
+        long totalWeek  = aiUsageLogRepository.countByCreatedAtAfter(week);
+        long claudeWeek = aiUsageLogRepository.countByCacheHitFalseAndCreatedAtAfter(week);
+        long cacheWeek  = totalWeek - claudeWeek;
+        double hitRate  = totalWeek > 0 ? (cacheWeek * 100.0 / totalWeek) : 0;
+
+        List<AiUsageStatsDto.FeatureStat> byFeature = aiUsageLogRepository.featureStats(week).stream()
+                .map(row -> {
+                    String feature   = (String) row[0];
+                    long   total     = ((Number) row[1]).longValue();
+                    long   hits      = ((Number) row[2]).longValue();
+                    long   inTok     = ((Number) row[3]).longValue();
+                    long   outTok    = ((Number) row[4]).longValue();
+                    return new AiUsageStatsDto.FeatureStat(
+                            feature, total, total - hits, hits,
+                            inTok, outTok, AiUsageStatsDto.estimateCost(inTok, outTok));
+                })
+                .toList();
+
+        long totalIn  = byFeature.stream().mapToLong(AiUsageStatsDto.FeatureStat::inputTokens).sum();
+        long totalOut = byFeature.stream().mapToLong(AiUsageStatsDto.FeatureStat::outputTokens).sum();
+
+        List<AiUsageStatsDto.DayBucket> trend = aiUsageLogRepository.dailyTrend(week).stream()
+                .map(row -> new AiUsageStatsDto.DayBucket(
+                        row[0].toString(),
+                        ((Number) row[1]).longValue(),
+                        ((Number) row[2]).longValue()))
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(new AiUsageStatsDto(
+                totalToday, totalWeek, claudeWeek, cacheWeek,
+                Math.round(hitRate * 10.0) / 10.0,
+                totalIn, totalOut,
+                AiUsageStatsDto.estimateCost(totalIn, totalOut),
+                byFeature, trend)));
+    }
 
     private boolean isAdmin(FirebasePrincipal principal) {
         if (principal == null) return false;

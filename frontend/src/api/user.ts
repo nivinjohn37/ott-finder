@@ -1,4 +1,4 @@
-import type { AdminContentStats, AdminReviewsPage, AdminStats, AdminUserDto, ApiResponse, BadgeDto, UserMe, UserPreferences, UserStats } from '@/types'
+import type { AdminContentStats, AdminReviewsPage, AdminStats, AdminUserDto, AiUsageStats, ApiResponse, BadgeDto, UserMe, UserPreferences, UserStats } from '@/types'
 import api from './axios'
 
 export async function getUserMe(): Promise<UserMe> {
@@ -93,4 +93,10 @@ export async function deleteAdminReview(id: number): Promise<void> {
 export async function getAdminContentStats(): Promise<AdminContentStats> {
   const res = await api.get<ApiResponse<AdminContentStats>>('/admin/content-stats')
   return res.data.data ?? { topReviewedMovies: [], ratingDistribution: [], topPlatforms: [] }
+}
+
+export async function getAiUsageStats(): Promise<AiUsageStats> {
+  const res = await api.get<ApiResponse<AiUsageStats>>('/admin/ai-usage')
+  if (!res.data.data) throw new Error('Failed to fetch AI usage stats')
+  return res.data.data
 }

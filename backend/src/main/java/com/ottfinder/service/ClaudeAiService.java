@@ -25,6 +25,7 @@ public class ClaudeAiService implements AiService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final AiUsageService aiUsageService;
 
     @Value("${anthropic.api-key:}")
     private String apiKey;
@@ -36,9 +37,11 @@ public class ClaudeAiService implements AiService {
     private static final String API_VERSION = "2023-06-01";
 
     public ClaudeAiService(@Qualifier("aiRestTemplate") RestTemplate restTemplate,
-                            ObjectMapper objectMapper) {
+                            ObjectMapper objectMapper,
+                            AiUsageService aiUsageService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
+        this.aiUsageService = aiUsageService;
     }
 
     @Override
@@ -52,10 +55,12 @@ public class ClaudeAiService implements AiService {
                                   List<String> reviews, boolean spoilers) {
         if (!isAvailable()) return null;
 
-        return callClaude(buildPrompt(title, overview, genres, rating, voteCount, year, reviews, spoilers));
+        return callClaude(buildPrompt(title, overview, genres, rating, voteCount, year, reviews, spoilers), "review-summary");
     }
 
-    private String callClaude(String prompt) {
+    public record ClaudeResponse(String text, int inputTokens, int outputTokens) {}
+
+    public ClaudeResponse callClaudeWithUsage(String prompt, String feature) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -78,14 +83,26 @@ public class ClaudeAiService implements AiService {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> content = (List<Map<String, Object>>) response.getBody().get("content");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> usage = (Map<String, Object>) response.getBody().get("usage");
+                int inputTokens  = usage != null ? ((Number) usage.getOrDefault("input_tokens",  0)).intValue() : 0;
+                int outputTokens = usage != null ? ((Number) usage.getOrDefault("output_tokens", 0)).intValue() : 0;
                 if (content != null && !content.isEmpty()) {
-                    return (String) content.get(0).get("text");
+                    ClaudeResponse result = new ClaudeResponse(
+                            (String) content.get(0).get("text"), inputTokens, outputTokens);
+                    if (feature != null) aiUsageService.logClaudeCall(feature, inputTokens, outputTokens);
+                    return result;
                 }
             }
         } catch (Exception ex) {
             log.warn("Claude API call failed: {}", ex.getMessage());
         }
         return null;
+    }
+
+    private String callClaude(String prompt, String feature) {
+        ClaudeResponse r = callClaudeWithUsage(prompt, feature);
+        return r != null ? r.text() : null;
     }
 
     @Override
@@ -134,7 +151,7 @@ public class ClaudeAiService implements AiService {
                 [{"title":"Exact title as it appears on TMDB","year":2021,"language":"Malayalam","reason":"One sentence why this is perfect"}]
                 """.formatted(naturalQuery, excludeBlock);
 
-        String raw = callClaude(prompt);
+        String raw = callClaude(prompt, "suggest");
         if (raw == null) return Collections.emptyList();
 
         try {
@@ -171,7 +188,7 @@ public class ClaudeAiService implements AiService {
                 [{"title":"Exact title as on TMDB","year":2014,"language":"English","reason":"One sentence why this fits their description"}]
                 """.formatted(query);
 
-        String raw = callClaude(prompt);
+        String raw = callClaude(prompt, "nl-search");
         if (raw == null) return Collections.emptyList();
 
         try {

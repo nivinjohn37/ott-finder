@@ -217,6 +217,35 @@ export interface BadgeDto {
   earnedAt: string
 }
 
+export interface AiFeatureStat {
+  feature: string
+  totalCalls: number
+  claudeCalls: number
+  cacheHits: number
+  inputTokens: number
+  outputTokens: number
+  estimatedCostUsd: number
+}
+
+export interface AiDayBucket {
+  date: string
+  totalCalls: number
+  claudeCalls: number
+}
+
+export interface AiUsageStats {
+  totalCallsToday: number
+  totalCallsThisWeek: number
+  claudeCallsThisWeek: number
+  cacheHitsThisWeek: number
+  cacheHitRatePct: number
+  totalInputTokensThisWeek: number
+  totalOutputTokensThisWeek: number
+  estimatedCostUsdThisWeek: number
+  byFeature: AiFeatureStat[]
+  dailyTrend: AiDayBucket[]
+}
+
 export interface MoodAnswers {
   mood: string
   audience: string

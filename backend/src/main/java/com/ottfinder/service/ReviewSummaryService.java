@@ -21,6 +21,7 @@ public class ReviewSummaryService {
     private final RedditService redditService;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final AiUsageService aiUsageService;
 
     // v2 key — includes keywords in cached JSON, avoids old plain-string entries
     private static final String CACHE_PREFIX = "ai:review-summary:v2:";
@@ -30,12 +31,14 @@ public class ReviewSummaryService {
                                  TMDBService tmdbService,
                                  RedditService redditService,
                                  StringRedisTemplate redisTemplate,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 AiUsageService aiUsageService) {
         this.aiService = aiService;
         this.tmdbService = tmdbService;
         this.redditService = redditService;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.aiUsageService = aiUsageService;
     }
 
     public ReviewSummaryDto getSummary(int tmdbId, String mediaType, boolean spoilers, String titleHint) {
@@ -48,7 +51,9 @@ public class ReviewSummaryService {
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             try {
-                return objectMapper.readValue(cached, ReviewSummaryDto.class);
+                ReviewSummaryDto hit = objectMapper.readValue(cached, ReviewSummaryDto.class);
+                aiUsageService.logCacheHit("review-summary");
+                return hit;
             } catch (Exception ex) {
                 log.warn("Cache parse failed for {}, regenerating", cacheKey);
             }

@@ -26,6 +26,7 @@ public class MoodSuggestionService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final Executor apiCallExecutor;
+    private final AiUsageService aiUsageService;
 
     private static final Duration CACHE_TTL = Duration.ofHours(24);
 
@@ -33,12 +34,14 @@ public class MoodSuggestionService {
                                   TMDBService tmdbService,
                                   StringRedisTemplate redisTemplate,
                                   ObjectMapper objectMapper,
-                                  @Qualifier("apiCallExecutor") Executor apiCallExecutor) {
+                                  @Qualifier("apiCallExecutor") Executor apiCallExecutor,
+                                  AiUsageService aiUsageService) {
         this.aiService = aiService;
         this.tmdbService = tmdbService;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.apiCallExecutor = apiCallExecutor;
+        this.aiUsageService = aiUsageService;
     }
 
     // Minimum quality bar for TMDB-verified results
@@ -68,7 +71,9 @@ public class MoodSuggestionService {
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
             try {
-                return objectMapper.readValue(cached, new TypeReference<>() {});
+                List<MovieSuggestion> hit = objectMapper.readValue(cached, new TypeReference<>() {});
+                aiUsageService.logCacheHit("suggest");
+                return hit;
             } catch (Exception ex) {
                 log.warn("Suggestion cache parse failed, regenerating");
             }

@@ -3,7 +3,7 @@ import { Navigate, Link } from 'react-router-dom'
 import {
   Users, Film, Bookmark, Tv2, Search, Check, AlertCircle, Loader2,
   ShieldCheck, Database, X, Star, Ban, RotateCcw, Trash2, BarChart2,
-  MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Group, Flag,
+  MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Group, Flag, Sparkles,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -12,18 +12,19 @@ import {
   useCurrentUser, useAdminStats, useAdminPlatforms, useAdminUsers,
   useSeedAvailability, useToggleBlacklist, useMovieAvailability,
   useDeleteAvailability, useAdminReviews, useDeleteAdminReview,
-  useAdminContentStats,
+  useAdminContentStats, useAiUsageStats,
 } from '@/hooks/useUser'
 import { searchMovies } from '@/api/movies'
-import type { AdminUserDto, AdminReviewDto, MovieSearchResult } from '@/types'
+import type { AdminUserDto, AdminReviewDto, AiFeatureStat, MovieSearchResult } from '@/types'
 
-type Tab = 'overview' | 'content' | 'reviews' | 'platforms'
+type Tab = 'overview' | 'content' | 'reviews' | 'platforms' | 'ai'
 
 const TABS: { id: Tab; label: string; icon: ReactNode }[] = [
   { id: 'overview',  label: 'Overview',  icon: <Database size={15} /> },
   { id: 'content',   label: 'Content',   icon: <BarChart2 size={15} /> },
   { id: 'reviews',   label: 'Reviews',   icon: <MessageSquare size={15} /> },
   { id: 'platforms', label: 'Platforms', icon: <Tv2 size={15} /> },
+  { id: 'ai',        label: 'AI Usage',  icon: <Sparkles size={15} /> },
 ]
 
 export function AdminPage() {
@@ -84,6 +85,7 @@ export function AdminPage() {
           {activeTab === 'content'   && <ContentTab />}
           {activeTab === 'reviews'   && <ReviewsTab />}
           {activeTab === 'platforms' && <PlatformsTab />}
+          {activeTab === 'ai'        && <AiUsageTab />}
         </motion.div>
       </AnimatePresence>
     </div>
@@ -801,6 +803,159 @@ function SectionHeading({ icon, title }: { icon: ReactNode; title: string }) {
       <div className="w-1 h-5 rounded-full bg-accent" />
       <span className="text-cinema-muted">{icon}</span>
       <h2 className="font-heading font-semibold text-cinema-text text-base">{title}</h2>
+    </div>
+  )
+}
+
+// ─── AI Usage tab ─────────────────────────────────────────────────────────────
+
+const FEATURE_LABELS: Record<string, string> = {
+  'review-summary': 'AI Review Summary',
+  'suggest':        'Mood Discovery',
+  'nl-search':      'Describe It Search',
+}
+
+function AiUsageTab() {
+  const { data, isLoading } = useAiUsageStats()
+
+  const fmt = (n: number | undefined) => (n ?? 0).toLocaleString()
+  const fmtCost = (n: number | undefined) =>
+    `$${((n ?? 0)).toFixed(4)}`
+
+  const summaryCards = [
+    { label: 'Calls today',        value: fmt(data?.totalCallsToday) },
+    { label: 'Calls this week',    value: fmt(data?.totalCallsThisWeek) },
+    { label: 'Claude calls',       value: fmt(data?.claudeCallsThisWeek) },
+    { label: 'Cache hits',         value: fmt(data?.cacheHitsThisWeek) },
+    { label: 'Cache hit rate',     value: isLoading ? '—' : `${data?.cacheHitRatePct ?? 0}%` },
+    { label: 'Est. cost (7 days)', value: isLoading ? '—' : fmtCost(data?.estimatedCostUsdThisWeek) },
+  ]
+
+  return (
+    <div className="space-y-8">
+      {/* Summary cards */}
+      <div>
+        <SectionHeading icon={<Sparkles size={16} />} title="This Week" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {summaryCards.map(({ label, value }) => (
+            <div key={label} className="bg-cinema-navy rounded-xl border border-cinema-navy-border p-4 space-y-2">
+              <div className="text-cinema-muted"><Sparkles size={16} /></div>
+              <div className="font-heading font-bold text-2xl text-cinema-text">
+                {isLoading ? '—' : value}
+              </div>
+              <div className="text-cinema-muted/60 text-xs font-body">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Token totals */}
+      {!isLoading && data && (
+        <div className="rounded-xl border border-cinema-navy-border bg-cinema-navy p-4 text-sm font-body space-y-1">
+          <p className="text-cinema-muted/70">
+            Input tokens this week: <span className="text-cinema-text font-medium">{fmt(data.totalInputTokensThisWeek)}</span>
+            <span className="text-cinema-muted/40 ml-2">(${(data.totalInputTokensThisWeek / 1_000_000 * 0.80).toFixed(4)})</span>
+          </p>
+          <p className="text-cinema-muted/70">
+            Output tokens this week: <span className="text-cinema-text font-medium">{fmt(data.totalOutputTokensThisWeek)}</span>
+            <span className="text-cinema-muted/40 ml-2">(${(data.totalOutputTokensThisWeek / 1_000_000 * 4.00).toFixed(4)})</span>
+          </p>
+          <p className="text-cinema-muted/40 text-xs mt-2">Pricing: Claude Haiku — $0.80/M input · $4.00/M output</p>
+        </div>
+      )}
+
+      {/* Per-feature breakdown */}
+      {!isLoading && data && data.byFeature.length > 0 && (
+        <div>
+          <SectionHeading icon={<BarChart2 size={16} />} title="By Feature" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm font-body">
+              <thead>
+                <tr className="text-cinema-muted/60 text-xs border-b border-cinema-navy-border">
+                  <th className="text-left py-2 pr-4">Feature</th>
+                  <th className="text-right py-2 px-3">Total</th>
+                  <th className="text-right py-2 px-3">Claude calls</th>
+                  <th className="text-right py-2 px-3">Cache hits</th>
+                  <th className="text-right py-2 px-3">Hit rate</th>
+                  <th className="text-right py-2 pl-3">Est. cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.byFeature.map((f: AiFeatureStat) => {
+                  const hitRate = f.totalCalls > 0
+                    ? Math.round(f.cacheHits / f.totalCalls * 100)
+                    : 0
+                  return (
+                    <tr key={f.feature} className="border-b border-cinema-navy-border/40 hover:bg-cinema-navy-hover transition-colors">
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs">
+                            <Sparkles size={9} /> {FEATURE_LABELS[f.feature] ?? f.feature}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right py-3 px-3 text-cinema-text">{fmt(f.totalCalls)}</td>
+                      <td className="text-right py-3 px-3 text-cinema-text">{fmt(f.claudeCalls)}</td>
+                      <td className="text-right py-3 px-3 text-green-400/80">{fmt(f.cacheHits)}</td>
+                      <td className="text-right py-3 px-3">
+                        <span className={`font-medium ${hitRate >= 50 ? 'text-green-400' : hitRate >= 20 ? 'text-yellow-400' : 'text-cinema-muted'}`}>
+                          {hitRate}%
+                        </span>
+                      </td>
+                      <td className="text-right py-3 pl-3 text-cinema-muted">{fmtCost(f.estimatedCostUsd)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Daily trend */}
+      {!isLoading && data && data.dailyTrend.length > 0 && (
+        <div>
+          <SectionHeading icon={<BarChart2 size={16} />} title="Daily Trend (7 days)" />
+          <div className="space-y-2">
+            {data.dailyTrend.map((d) => {
+              const total = d.totalCalls
+              const maxForScale = Math.max(...data.dailyTrend.map((x) => x.totalCalls), 1)
+              const barPct = Math.round((total / maxForScale) * 100)
+              const claudePct = total > 0 ? Math.round((d.claudeCalls / total) * 100) : 0
+              return (
+                <div key={d.date} className="flex items-center gap-3 text-xs font-body">
+                  <span className="text-cinema-muted/60 w-20 shrink-0">{d.date.slice(5)}</span>
+                  <div className="flex-1 h-5 bg-cinema-navy rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-purple-500/40 relative"
+                      style={{ width: `${barPct}%` }}
+                    >
+                      <div
+                        className="absolute left-0 top-0 h-full bg-purple-500 rounded-full"
+                        style={{ width: `${claudePct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-cinema-text w-8 text-right">{total}</span>
+                </div>
+              )
+            })}
+            <div className="flex items-center gap-3 text-xs font-body text-cinema-muted/40 mt-1">
+              <span className="w-20" />
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-purple-500 inline-block" /> Claude calls</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-2 rounded bg-purple-500/30 inline-block" /> Cache hits</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && data && data.totalCallsThisWeek === 0 && (
+        <p className="text-center text-cinema-muted font-body py-12 text-sm">
+          No AI usage recorded yet. Logs will appear here after the first search or summary request.
+        </p>
+      )}
     </div>
   )
 }

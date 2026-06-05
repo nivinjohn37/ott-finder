@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { deleteAdminReview, deleteAvailability, getAdminContentStats, getAdminPlatforms, getAdminReviews, getAdminStats, getAdminUsers, getMovieAvailability, getUserBadges, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
+import { deleteAdminReview, deleteAvailability, getAdminContentStats, getAdminPlatforms, getAdminReviews, getAdminStats, getAdminUsers, getAiUsageStats, getMovieAvailability, getUserBadges, getUserMe, getUserPreferences, getUserStats, saveUserPreferences, seedAvailability, toggleBlacklist } from '@/api/user'
 import { useAuth } from '@/context/AuthContext'
 import type { UserPreferences } from '@/types'
 
@@ -127,6 +127,14 @@ export function useUserPreferences() {
     queryKey: ['user', 'preferences'],
     queryFn: getUserPreferences,
     staleTime: 10 * 60 * 1000,
+  })
+}
+
+export function useAiUsageStats() {
+  return useQuery({
+    queryKey: ['admin', 'ai-usage'],
+    queryFn: getAiUsageStats,
+    staleTime: 5 * 60 * 1000,
   })
 }
 
