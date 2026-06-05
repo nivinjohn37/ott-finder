@@ -14,5 +14,7 @@ public interface AiService {
     List<AiSuggestion> suggestMovies(String mood, String audience, String length, String language,
                                      String era, String mediaType, List<String> excludeTitles);
 
+    List<AiSuggestion> interpretNlQuery(String query);
+
     boolean isAvailable();
 }

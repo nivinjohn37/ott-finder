@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions } from '@/api/movies'
+import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions, getNlSearch } from '@/api/movies'
 import { useAuth } from '@/context/AuthContext'
 import { useMutation } from '@tanstack/react-query'
 import type { MoodAnswers } from '@/types'
@@ -51,6 +51,16 @@ export function useMoodSuggestions() {
   return useMutation({
     mutationFn: ({ answers, exclude }: { answers: MoodAnswers; exclude?: string[] }) =>
       getMoodSuggestions(answers, exclude),
+  })
+}
+
+export function useNlSearch(query: string) {
+  return useQuery({
+    queryKey: ['nl-search', query],
+    queryFn: () => getNlSearch(query),
+    enabled: query.length >= 5,
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: 1,
   })
 }
 

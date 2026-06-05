@@ -4,6 +4,7 @@ import com.ottfinder.dto.response.ApiResponse;
 import com.ottfinder.dto.response.MovieSuggestion;
 import com.ottfinder.dto.response.ReviewSummaryDto;
 import com.ottfinder.service.MoodSuggestionService;
+import com.ottfinder.service.NlSearchService;
 import com.ottfinder.service.ReviewSummaryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,11 +21,14 @@ public class AiController {
 
     private final ReviewSummaryService reviewSummaryService;
     private final MoodSuggestionService moodSuggestionService;
+    private final NlSearchService nlSearchService;
 
     public AiController(ReviewSummaryService reviewSummaryService,
-                         MoodSuggestionService moodSuggestionService) {
+                         MoodSuggestionService moodSuggestionService,
+                         NlSearchService nlSearchService) {
         this.reviewSummaryService = reviewSummaryService;
         this.moodSuggestionService = moodSuggestionService;
+        this.nlSearchService = nlSearchService;
     }
 
     @GetMapping("/suggest")
@@ -42,6 +46,12 @@ public class AiController {
                 : java.util.Collections.emptyList();
         List<MovieSuggestion> results = moodSuggestionService
                 .getSuggestions(mood, audience, length, language, era, mediaType, excludeTitles);
+        return ResponseEntity.ok(ApiResponse.success(results));
+    }
+
+    @GetMapping("/nl-search")
+    public ResponseEntity<ApiResponse<List<MovieSuggestion>>> nlSearch(@RequestParam String q) {
+        List<MovieSuggestion> results = nlSearchService.search(q);
         return ResponseEntity.ok(ApiResponse.success(results));
     }
 

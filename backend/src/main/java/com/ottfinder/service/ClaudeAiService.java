@@ -150,6 +150,42 @@ public class ClaudeAiService implements AiService {
         }
     }
 
+    @Override
+    public List<AiSuggestion> interpretNlQuery(String query) {
+        if (!isAvailable()) return Collections.emptyList();
+
+        String prompt = """
+                You are an expert film curator who understands what people mean when they \
+                describe what they want to watch.
+
+                A user is searching for something to watch and describes it as:
+                "%s"
+
+                Recommend 6 specific films or shows that perfectly match this description. Rules:
+                1. Only recommend films that are genuinely well-regarded — no obscure or \
+                   straight-to-streaming-only titles.
+                2. Match the mood, theme, era, language, and style described as closely as possible.
+                3. If they reference a specific film ("like Interstellar"), match its tone and \
+                   scale — not just the director or genre label.
+                4. Return ONLY a JSON array, no explanation, no markdown:
+                [{"title":"Exact title as on TMDB","year":2014,"language":"English","reason":"One sentence why this fits their description"}]
+                """.formatted(query);
+
+        String raw = callClaude(prompt);
+        if (raw == null) return Collections.emptyList();
+
+        try {
+            String json = raw.trim();
+            int start = json.indexOf('[');
+            int end = json.lastIndexOf(']');
+            if (start >= 0 && end > start) json = json.substring(start, end + 1);
+            return objectMapper.readValue(json, new TypeReference<List<AiSuggestion>>() {});
+        } catch (Exception ex) {
+            log.warn("Failed to parse NL search response: {}", ex.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
     private String buildNaturalQuery(String mood, String audience, String language,
                                       String era, String length, String mediaType) {
         // Map abstract answer values → natural language phrases

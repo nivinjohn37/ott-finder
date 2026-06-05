@@ -66,6 +66,11 @@ export async function getReviewSummary(
   }
 }
 
+export async function getNlSearch(query: string): Promise<MovieSuggestion[]> {
+  const res = await api.get<ApiResponse<MovieSuggestion[]>>('/ai/nl-search', { params: { q: query } })
+  return res.data.data ?? []
+}
+
 export async function getGenreMovies(genreName: string, mediaType = 'movie'): Promise<MovieSearchResult[]> {
   const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/genre', {
     params: { name: genreName, mediaType },
