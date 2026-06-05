@@ -38,7 +38,7 @@ export function HomePage() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="max-w-2xl mx-auto"
         >
-          <SearchBar />
+          <SearchBar showAiLink />
         </motion.div>
 
         {/* Recently viewed — logged-in users only */}

@@ -1,16 +1,17 @@
 import { useRef, useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, Film, Tv2 } from 'lucide-react'
+import { Search, X, Film, Tv2, Sparkles } from 'lucide-react'
 import { searchMovies } from '@/api/movies'
 import type { MovieSearchResult } from '@/types'
 
 interface Props {
   defaultValue?: string
   autoFocus?: boolean
+  showAiLink?: boolean
 }
 
-export function SearchBar({ defaultValue = '', autoFocus = false }: Props) {
+export function SearchBar({ defaultValue = '', autoFocus = false, showAiLink = false }: Props) {
   const [value, setValue] = useState(defaultValue)
   const [suggestions, setSuggestions] = useState<MovieSearchResult[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -75,7 +76,7 @@ export function SearchBar({ defaultValue = '', autoFocus = false }: Props) {
   }
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative w-full space-y-2">
       <motion.form
         onSubmit={handleSubmit}
         className="relative w-full"
@@ -105,6 +106,18 @@ export function SearchBar({ defaultValue = '', autoFocus = false }: Props) {
           </button>
         )}
       </motion.form>
+
+      {/* AI search hint */}
+      {showAiLink && (
+        <div className="flex justify-end">
+          <Link
+            to="/search?mode=ai"
+            className="inline-flex items-center gap-1.5 text-xs font-body text-purple-400/70 hover:text-purple-300 transition-colors"
+          >
+            <Sparkles size={11} /> Try AI search — describe what you want to watch
+          </Link>
+        </div>
+      )}
 
       {/* Suggestions dropdown */}
       <AnimatePresence>

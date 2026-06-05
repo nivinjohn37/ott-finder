@@ -222,7 +222,7 @@ export function Navbar() {
               exit={{ y: -20, opacity: 0 }}
               transition={{ delay: 0.05 }}
             >
-              <SearchBar autoFocus />
+              <SearchBar autoFocus showAiLink />
               <button
                 type="button"
                 onClick={() => setSearchOpen(false)}
