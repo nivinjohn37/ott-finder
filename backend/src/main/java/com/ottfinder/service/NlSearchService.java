@@ -44,9 +44,10 @@ public class NlSearchService {
     }
 
     public List<MovieSuggestion> search(String query) {
+        log.info("NlSearchService.search called, query='{}'", query);
         try {
             return doSearch(query);
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             log.error("NL search failed for query='{}': {} — {}", query, ex.getClass().getName(), ex.getMessage(), ex);
             return Collections.emptyList();
         }
