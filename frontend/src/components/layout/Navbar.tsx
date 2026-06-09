@@ -78,6 +78,7 @@ export function Navbar() {
               <NavLink to="/" label="Home" />
               <NavLink to="/trending" label="Trending" />
               <NavLink to="/discover" label="Discover" />
+              <NavLink to="/roulette" label="🎰 Roulette" />
               <NavLink to="/features" label="Features" />
               {user && <NavLink to="/watchlist" label="My Watchlist" />}
               {user && <NavLink to="/groups" label="Groups" />}
@@ -249,6 +250,7 @@ export function Navbar() {
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
               <MobileLink to="/discover" label="Discover" />
+              <MobileLink to="/roulette" label="🎰 Roulette" />
               <MobileLink to="/features" label="Features" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
               {user && <MobileLink to="/groups" label="Groups" />}
