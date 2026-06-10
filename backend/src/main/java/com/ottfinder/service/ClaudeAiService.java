@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,8 +35,9 @@ public class ClaudeAiService implements AiService {
     @Value("${anthropic.base-url:https://api.anthropic.com}")
     private String baseUrl;
 
-    private static final String MODEL = "claude-haiku-4-5-20251001";
-    private static final String API_VERSION = "2023-06-01";
+    private static final String MODEL        = "claude-haiku-4-5-20251001";
+    private static final String VISION_MODEL = "claude-fable-5";
+    private static final String API_VERSION  = "2023-06-01";
 
     public ClaudeAiService(@Qualifier("aiRestTemplate") RestTemplate restTemplate,
                             ObjectMapper objectMapper,
@@ -60,13 +63,19 @@ public class ClaudeAiService implements AiService {
 
     public record ClaudeResponse(String text, int inputTokens, int outputTokens) {}
 
+    public record SnapIdentification(
+            String title, Integer year, String mediaType, String confidence, String explanation) {}
+
+    private HttpHeaders buildHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-api-key", apiKey);
+        headers.set("anthropic-version", API_VERSION);
+        return headers;
+    }
+
     public ClaudeResponse callClaudeWithUsage(String prompt, String feature) {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("x-api-key", apiKey);
-            headers.set("anthropic-version", API_VERSION);
-
             Map<String, Object> body = Map.of(
                     "model", MODEL,
                     "max_tokens", 1024,
@@ -76,7 +85,7 @@ public class ClaudeAiService implements AiService {
             ResponseEntity<Map> response = restTemplate.exchange(
                     baseUrl + "/v1/messages",
                     HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
+                    new HttpEntity<>(body, buildHeaders()),
                     Map.class
             );
 
@@ -103,6 +112,90 @@ public class ClaudeAiService implements AiService {
     private String callClaude(String prompt, String feature) {
         ClaudeResponse r = callClaudeWithUsage(prompt, feature);
         return r != null ? r.text() : null;
+    }
+
+    public SnapIdentification identifyMovieFromImage(byte[] imageBytes, String mimeType) {
+        if (!isAvailable()) return null;
+
+        String safeType = mimeType != null && mimeType.startsWith("image/") ? mimeType : "image/jpeg";
+        String base64   = Base64.getEncoder().encodeToString(imageBytes);
+
+        String prompt = """
+                You are a movie and TV show identification expert. Examine this image and identify \
+                any movie or TV show visible in it.
+
+                The image could be a movie poster, a scene screenshot, a streaming service thumbnail, \
+                a social media post about a film, or any image identifying a specific movie or TV show.
+
+                Return ONLY valid JSON (no markdown fences, no extra text):
+                {"title":"Exact title","year":2019,"mediaType":"movie","confidence":"high","explanation":"One sentence: what visual clue identified it"}
+
+                Rules:
+                - title: exact English title as it appears on IMDb/TMDB
+                - year: release year as integer, or null if unknown
+                - mediaType: "movie" or "tv"
+                - confidence: "high", "medium", or "low"
+                - explanation: one short sentence
+
+                If you cannot identify any specific movie or TV show, return:
+                {"title":null,"year":null,"mediaType":null,"confidence":"none","explanation":"Cannot identify a movie or show in this image"}
+                """;
+
+        List<Map<String, Object>> content = new ArrayList<>();
+        content.add(Map.of("type", "image", "source", Map.of(
+                "type", "base64",
+                "media_type", safeType,
+                "data", base64
+        )));
+        content.add(Map.of("type", "text", "text", prompt));
+
+        ClaudeResponse raw = callClaudeVision(content);
+        if (raw == null || raw.text() == null) return null;
+
+        aiUsageService.logClaudeCall("snap-search", raw.inputTokens(), raw.outputTokens());
+
+        try {
+            String json = raw.text().trim();
+            int start = json.indexOf('{');
+            int end   = json.lastIndexOf('}');
+            if (start >= 0 && end > start) json = json.substring(start, end + 1);
+            return objectMapper.readValue(json, SnapIdentification.class);
+        } catch (Exception ex) {
+            log.warn("Failed to parse snap identification response: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    private ClaudeResponse callClaudeVision(List<Map<String, Object>> content) {
+        try {
+            Map<String, Object> body = Map.of(
+                    "model", VISION_MODEL,
+                    "max_tokens", 256,
+                    "messages", List.of(Map.of("role", "user", "content", content))
+            );
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    baseUrl + "/v1/messages",
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, buildHeaders()),
+                    Map.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> respContent = (List<Map<String, Object>>) response.getBody().get("content");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> usage = (Map<String, Object>) response.getBody().get("usage");
+                int inputTokens  = usage != null ? ((Number) usage.getOrDefault("input_tokens",  0)).intValue() : 0;
+                int outputTokens = usage != null ? ((Number) usage.getOrDefault("output_tokens", 0)).intValue() : 0;
+                if (respContent != null && !respContent.isEmpty()) {
+                    return new ClaudeResponse((String) respContent.get(0).get("text"), inputTokens, outputTokens);
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Claude vision API call failed: {}", ex.getMessage());
+        }
+        return null;
     }
 
     @Override

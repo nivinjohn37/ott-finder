@@ -71,6 +71,36 @@ export async function getNlSearch(query: string): Promise<MovieSuggestion[]> {
   return res.data.data ?? []
 }
 
+async function resizeImageToJpeg(file: File, maxDim = 800): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        const scale = Math.min(maxDim / width, maxDim / height)
+        width  = Math.floor(width  * scale)
+        height = Math.floor(height * scale)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width  = width
+      canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(blob => resolve(blob!), 'image/jpeg', 0.85)
+    }
+    img.src = url
+  })
+}
+
+export async function snapSearch(file: File): Promise<MovieSuggestion | null> {
+  const resized = await resizeImageToJpeg(file)
+  const form = new FormData()
+  form.append('image', resized, 'image.jpg')
+  const res = await api.post<ApiResponse<MovieSuggestion>>('/ai/snap-search', form)
+  return res.data.data ?? null
+}
+
 export async function getGenreMovies(genreName: string, mediaType = 'movie'): Promise<MovieSearchResult[]> {
   const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/genre', {
     params: { name: genreName, mediaType },

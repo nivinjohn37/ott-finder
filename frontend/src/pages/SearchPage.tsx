@@ -1,9 +1,9 @@
 import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, SlidersHorizontal, ChevronDown, X, Sparkles, Star, ArrowRight, Globe, CornerDownLeft } from 'lucide-react'
+import { Search, SlidersHorizontal, ChevronDown, X, Sparkles, Star, ArrowRight, Globe, CornerDownLeft, Camera, Upload } from 'lucide-react'
 import { useState, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useSearch, useNlSearch } from '@/hooks/useMovies'
+import { useSearch, useNlSearch, useSnapSearch } from '@/hooks/useMovies'
 import { SearchBar } from '@/components/movie/SearchBar'
 import { MovieGrid } from '@/components/movie/MovieGrid'
 import { SkeletonGrid } from '@/components/common/SkeletonCard'
@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import type { MediaType, MovieSuggestion } from '@/types'
 
 type SortBy = 'relevance' | 'rating_desc' | 'year_desc' | 'year_asc'
-type SearchMode = 'keyword' | 'ai'
+type SearchMode = 'keyword' | 'ai' | 'snap'
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
   { value: 'relevance', label: 'Relevance' },
@@ -114,7 +114,8 @@ function AiResultCard({ s, index }: { s: MovieSuggestion; index: number }) {
 export function SearchPage() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
-  const modeParam = params.get('mode') === 'ai' ? 'ai' : 'keyword'
+  const rawMode = params.get('mode')
+  const modeParam: SearchMode = rawMode === 'ai' ? 'ai' : rawMode === 'snap' ? 'snap' : 'keyword'
 
   const typeParam = params.get('type')
   const mediaFilter: MediaType | 'all' = typeParam === 'movie' || typeParam === 'tv' ? typeParam : 'all'
@@ -124,10 +125,19 @@ export function SearchPage() {
   const activePlatforms = new Set(params.get('platforms')?.split(',').filter(Boolean) ?? [])
   const [sortOpen, setSortOpen] = useState(false)
 
-  // AI mode state — input is local; submitted query drives the hook
+  // AI mode state
   const [aiInput, setAiInput] = useState(modeParam === 'ai' ? query : '')
   const [submittedAiQuery, setSubmittedAiQuery] = useState(modeParam === 'ai' ? query : '')
+  const [exampleIdx, setExampleIdx] = useState(0)
   const aiInputRef = useRef<HTMLInputElement>(null)
+
+  // Snap mode state
+  const [snapFile, setSnapFile] = useState<File | null>(null)
+  const [snapPreview, setSnapPreview] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [snapResult, setSnapResult] = useState<MovieSuggestion | null | undefined>(undefined)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const snapMutation = useSnapSearch()
 
   const { data, isLoading, isFetching } = useSearch(modeParam === 'keyword' ? query : '')
   const { data: aiResults, isLoading: aiLoading } = useNlSearch(modeParam === 'ai' ? submittedAiQuery : '')
@@ -135,21 +145,19 @@ export function SearchPage() {
   function switchMode(mode: SearchMode) {
     setParams((prev) => {
       const next = new URLSearchParams(prev)
+      next.delete('q')
+      next.delete('type')
+      next.delete('sort')
+      next.delete('platforms')
       if (mode === 'keyword') {
         next.delete('mode')
-        next.delete('q')
-        setAiInput('')
-        setSubmittedAiQuery('')
       } else {
-        next.set('mode', 'ai')
-        next.delete('q')
-        next.delete('type')
-        next.delete('sort')
-        next.delete('platforms')
-        setAiInput('')
-        setSubmittedAiQuery('')
-        setTimeout(() => aiInputRef.current?.focus(), 50)
+        next.set('mode', mode)
       }
+      setAiInput('')
+      setSubmittedAiQuery('')
+      clearSnap()
+      if (mode === 'ai') setTimeout(() => aiInputRef.current?.focus(), 50)
       return next
     }, { replace: true })
   }
@@ -202,6 +210,28 @@ export function SearchPage() {
     }, { replace: true })
   }
 
+  function handleFile(file: File | undefined | null) {
+    if (!file || !file.type.startsWith('image/')) return
+    if (snapPreview) URL.revokeObjectURL(snapPreview)
+    setSnapFile(file)
+    setSnapPreview(URL.createObjectURL(file))
+    setSnapResult(undefined)
+    snapMutation.reset()
+  }
+
+  function clearSnap() {
+    setSnapPreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    setSnapFile(null)
+    setSnapResult(undefined)
+    snapMutation.reset()
+  }
+
+  async function submitSnap() {
+    if (!snapFile) return
+    const result = await snapMutation.mutateAsync(snapFile).catch(() => null)
+    setSnapResult(result)
+  }
+
   const hasActiveFilters = mediaFilter !== 'all' || sortBy !== 'relevance' || activePlatforms.size > 0
 
   const displayed = useMemo(() => {
@@ -218,13 +248,12 @@ export function SearchPage() {
   }, [data, mediaFilter, activePlatforms, sortBy])
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort'
-  const [exampleIdx, setExampleIdx] = useState(0)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
       {/* Mode toggle */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <button
           onClick={() => switchMode('keyword')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-body font-medium transition-all ${
@@ -244,6 +273,16 @@ export function SearchPage() {
           }`}
         >
           <Sparkles size={13} /> Describe it
+        </button>
+        <button
+          onClick={() => switchMode('snap')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-body font-medium transition-all ${
+            modeParam === 'snap'
+              ? 'bg-sky-600 text-white shadow-lg shadow-sky-900/30'
+              : 'bg-cinema-navy border border-cinema-navy-border text-cinema-muted hover:text-cinema-text'
+          }`}
+        >
+          <Camera size={13} /> Snap
         </button>
       </div>
 
@@ -363,10 +402,9 @@ export function SearchPage() {
               )}
             </div>
           </motion.div>
-        ) : (
-          <motion.div key="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
 
-            {/* AI search input */}
+        ) : modeParam === 'ai' ? (
+          <motion.div key="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
             <div className="relative">
               <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-cinema-card border border-purple-500/20 focus-within:border-purple-500/50 transition-colors shadow-lg shadow-purple-900/10">
                 <Sparkles size={16} className="text-purple-400 flex-shrink-0" />
@@ -397,7 +435,6 @@ export function SearchPage() {
                 </button>
               </div>
 
-              {/* Example pills */}
               {!submittedAiQuery && (
                 <div className="flex flex-wrap gap-2 mt-3">
                   {NL_EXAMPLES.map((ex, i) => (
@@ -417,7 +454,6 @@ export function SearchPage() {
               )}
             </div>
 
-            {/* AI results */}
             {!submittedAiQuery ? (
               <EmptyState
                 icon={<Sparkles size={28} />}
@@ -451,18 +487,159 @@ export function SearchPage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="max-w-2xl space-y-3">
                   {aiResults.map((s, i) => (
                     <AiResultCard key={`${s.movie.title}-${i}`} s={s} index={i} />
                   ))}
                 </div>
-
                 <p className="mt-6 text-cinema-muted/40 font-body text-xs">
                   Generated by Claude · Results may vary
                 </p>
               </motion.div>
             )}
+          </motion.div>
+
+        ) : (
+          /* ── Snap mode ── */
+          <motion.div key="snap" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+
+            {/* Upload area */}
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Upload image"
+              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+              className={`relative flex flex-col items-center justify-center gap-5 border-2 border-dashed rounded-2xl p-10 cursor-pointer transition-all select-none ${
+                isDragging
+                  ? 'border-sky-400 bg-sky-500/5'
+                  : 'border-cinema-navy-border hover:border-cinema-muted/50 hover:bg-cinema-navy/30'
+              }`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]) }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+
+              <AnimatePresence mode="wait">
+                {snapPreview ? (
+                  <motion.div
+                    key="preview"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="relative"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <img
+                      src={snapPreview}
+                      alt="Preview"
+                      className="max-h-52 max-w-full rounded-xl object-contain shadow-lg"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); clearSnap() }}
+                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-cinema-navy border border-cinema-navy-border flex items-center justify-center text-cinema-muted hover:text-cinema-text transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex flex-col items-center gap-3"
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-cinema-navy border border-cinema-navy-border flex items-center justify-center">
+                      <Upload size={24} className="text-cinema-muted" />
+                    </div>
+                    <div className="text-center">
+                      <p className="font-body font-medium text-cinema-text">Drop an image or click to upload</p>
+                      <p className="text-cinema-muted text-sm mt-1">Movie poster · Scene screenshot · Streaming thumbnail</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Identify button */}
+            {snapFile && (
+              <div className="flex justify-center">
+                <motion.button
+                  onClick={submitSnap}
+                  disabled={snapMutation.isPending}
+                  whileHover={snapMutation.isPending ? {} : { scale: 1.03 }}
+                  whileTap={snapMutation.isPending ? {} : { scale: 0.97 }}
+                  className="flex items-center gap-2.5 px-8 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-body font-medium shadow-lg shadow-sky-900/30 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {snapMutation.isPending ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                        className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white"
+                      />
+                      Fable 5 is analysing…
+                    </>
+                  ) : (
+                    <>
+                      <Camera size={16} />
+                      Identify this movie
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            )}
+
+            {/* Result */}
+            <AnimatePresence mode="wait">
+              {snapMutation.isPending ? null : snapResult !== undefined ? (
+                <motion.div
+                  key="snap-result"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                >
+                  {snapResult === null ? (
+                    <EmptyState
+                      icon={<Camera size={28} />}
+                      title="Couldn't identify the movie"
+                      description="Try a clearer image — a movie poster, title card, or streaming thumbnail works best."
+                    />
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-body">
+                          <Camera size={10} /> Fable 5 identified
+                        </span>
+                      </div>
+                      <div className="max-w-2xl">
+                        <AiResultCard s={snapResult} index={0} />
+                      </div>
+                      <p className="mt-4 text-cinema-muted/40 font-body text-xs">
+                        Powered by Claude Fable 5 · Vision · Results cached 6 hours
+                      </p>
+                    </>
+                  )}
+                </motion.div>
+              ) : !snapFile ? (
+                <motion.div key="snap-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <EmptyState
+                    icon={<Camera size={28} />}
+                    title="Identify any movie from an image"
+                    description="Upload a poster, scene still, or streaming screenshot — Fable 5 will tell you what it is and where to watch it."
+                  />
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

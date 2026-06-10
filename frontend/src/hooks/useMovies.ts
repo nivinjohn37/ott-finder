@@ -1,7 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions, getNlSearch } from '@/api/movies'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions, getNlSearch, snapSearch } from '@/api/movies'
 import { useAuth } from '@/context/AuthContext'
-import { useMutation } from '@tanstack/react-query'
 import type { MoodAnswers } from '@/types'
 
 export function useSearch(query: string) {
@@ -61,6 +60,12 @@ export function useNlSearch(query: string) {
     enabled: query.length >= 5,
     staleTime: 6 * 60 * 60 * 1000,
     retry: 1,
+  })
+}
+
+export function useSnapSearch() {
+  return useMutation({
+    mutationFn: (file: File) => snapSearch(file),
   })
 }
 

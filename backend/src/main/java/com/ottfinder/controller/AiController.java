@@ -6,12 +6,16 @@ import com.ottfinder.dto.response.ReviewSummaryDto;
 import com.ottfinder.service.MoodSuggestionService;
 import com.ottfinder.service.NlSearchService;
 import com.ottfinder.service.ReviewSummaryService;
+import com.ottfinder.service.SnapSearchService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -22,13 +26,16 @@ public class AiController {
     private final ReviewSummaryService reviewSummaryService;
     private final MoodSuggestionService moodSuggestionService;
     private final NlSearchService nlSearchService;
+    private final SnapSearchService snapSearchService;
 
     public AiController(ReviewSummaryService reviewSummaryService,
                          MoodSuggestionService moodSuggestionService,
-                         NlSearchService nlSearchService) {
+                         NlSearchService nlSearchService,
+                         SnapSearchService snapSearchService) {
         this.reviewSummaryService = reviewSummaryService;
         this.moodSuggestionService = moodSuggestionService;
         this.nlSearchService = nlSearchService;
+        this.snapSearchService = snapSearchService;
     }
 
     @GetMapping("/suggest")
@@ -53,6 +60,20 @@ public class AiController {
     public ResponseEntity<ApiResponse<List<MovieSuggestion>>> nlSearch(@RequestParam String q) {
         List<MovieSuggestion> results = nlSearchService.search(q);
         return ResponseEntity.ok(ApiResponse.success(results));
+    }
+
+    @PostMapping(value = "/snap-search", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<MovieSuggestion>> snapSearch(
+            @RequestParam("image") MultipartFile image) {
+        if (image.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("VALIDATION_ERROR", "No image provided"));
+        }
+        String ct = image.getContentType();
+        if (ct == null || !ct.startsWith("image/")) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("VALIDATION_ERROR", "File must be an image"));
+        }
+        MovieSuggestion result = snapSearchService.identify(image);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/review-summary/{tmdbId}")
