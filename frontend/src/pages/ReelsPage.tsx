@@ -8,7 +8,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getMovieDetail } from '@/api/movies'
 import type { MovieSearchResult, MovieDetail } from '@/types'
 
-// ─── Action button ───────────────────────────────────────────────────────────
+// ─── Action button ────────────────────────────────────────────────────────────
 
 function ActionBtn({
   icon,
@@ -60,7 +60,7 @@ function ReelCard({
   const [videoLoaded, setVideoLoaded] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // Fetch movie detail (with trailerKey + genres) only when active or prefetching
+  // Fetch detail (trailerKey + genres) only for the active reel and the next one
   const { data: detail } = useQuery<MovieDetail>({
     queryKey: ['movies', 'detail', movie.tmdbId, movie.mediaType],
     queryFn: () => getMovieDetail(movie.tmdbId, movie.mediaType),
@@ -73,38 +73,25 @@ function ReelCard({
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null
   const isSaved = inWatchlist || optimisticSaved
 
-  // Kill audio immediately when this reel scrolls out of view
+  // Reset fade-in when active state or trailer changes
+  useEffect(() => {
+    setVideoLoaded(false)
+  }, [trailerKey, isActive])
+
+  // Stop audio the instant a reel goes off-screen, before React finishes unmounting
   useEffect(() => {
     if (!isActive && iframeRef.current) {
       iframeRef.current.src = 'about:blank'
     }
   }, [isActive])
 
-  // Re-trigger fade-in animation when trailer key arrives or active state changes
-  useEffect(() => {
-    setVideoLoaded(false)
-  }, [trailerKey, isActive])
-
-  // Mute/unmute via postMessage (requires enablejsapi=1 in src)
-  useEffect(() => {
-    if (!iframeRef.current) return
-    const command = isMuted ? 'mute' : 'unMute'
-    iframeRef.current.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func: command, args: [] }),
-      '*',
-    )
-  }, [isMuted])
-
   const iframeSrc =
     isActive && trailerKey
-      ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&rel=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1`
+      ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&rel=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1`
       : ''
 
   const handleSave = async () => {
-    if (!user) {
-      signInWithGoogle()
-      return
-    }
+    if (!user) { signInWithGoogle(); return }
     setOptimisticSaved(true)
     try {
       await addToWatchlist({ movieId: movie.tmdbId, mediaType: movie.mediaType })
@@ -114,9 +101,10 @@ function ReelCard({
   }
 
   return (
-    <div className="relative h-[calc(100dvh_-_4rem)] w-full snap-start overflow-hidden flex-shrink-0 bg-cinema-black">
+    // h-screen fills the full fixed container height (= 100vh)
+    <div className="relative h-screen w-full snap-start overflow-hidden flex-shrink-0 bg-cinema-black">
 
-      {/* Backdrop — always visible as placeholder/fallback */}
+      {/* Backdrop — visible until video fades in */}
       {movie.backdropUrl && (
         <img
           src={movie.backdropUrl}
@@ -127,11 +115,11 @@ function ReelCard({
         />
       )}
 
-      {/* YouTube trailer iframe — covers full reel, aspect-ratio letterbox trick */}
+      {/* YouTube trailer — covers full reel using the 16:9 letterbox trick */}
       {iframeSrc && (
         <iframe
           ref={iframeRef}
-          key={trailerKey}
+          key={`${trailerKey}-${isMuted}`}
           src={iframeSrc}
           onLoad={() => setVideoLoaded(true)}
           title={movie.title}
@@ -142,7 +130,7 @@ function ReelCard({
         />
       )}
 
-      {/* No trailer fallback indicator */}
+      {/* No-trailer indicator */}
       {isActive && detail && !trailerKey && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 text-white/30 pointer-events-none">
           <Film size={40} />
@@ -151,17 +139,17 @@ function ReelCard({
       )}
 
       {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-black/60 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-black/70 pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent pointer-events-none" />
 
-      {/* Top bar: index + dismiss */}
-      <div className="absolute top-3 left-0 right-0 flex items-center justify-between px-4 pointer-events-none">
+      {/* Top bar — pushed down below the fixed navbar (h-16 = 4rem) */}
+      <div className="absolute top-20 left-0 right-0 flex items-center justify-between px-4">
         <span className="text-white/40 text-xs font-body tabular-nums">
           {String(index + 1).padStart(2, '0')}
         </span>
         <button
           onClick={onHide}
-          className="pointer-events-auto p-1.5 rounded-full bg-black/30 text-white/60 hover:text-white hover:bg-black/50 transition-colors"
+          className="p-1.5 rounded-full bg-black/30 text-white/60 hover:text-white hover:bg-black/50 transition-colors"
         >
           <X size={15} />
         </button>
@@ -198,7 +186,7 @@ function ReelCard({
       </div>
 
       {/* Bottom info */}
-      <div className="absolute bottom-0 left-4 right-20 pb-5">
+      <div className="absolute bottom-0 left-4 right-20 pb-6">
         {movie.platforms.length > 0 && (
           <div className="flex gap-1.5 mb-2 flex-wrap">
             {movie.platforms.slice(0, 3).map((p) => (
@@ -209,9 +197,6 @@ function ReelCard({
                 {p.displayName}
               </span>
             ))}
-            {movie.platforms.length === 0 && (
-              <span className="text-white/30 text-[11px] font-body">Not streaming</span>
-            )}
           </div>
         )}
 
@@ -251,27 +236,22 @@ export function ReelsPage() {
 
   const visibleMovies = movies.filter((m) => !hiddenIds.has(m.tmdbId))
 
-  // IntersectionObserver with the scroll container as root — reliably fires when
-  // a card crosses the 50% visibility threshold inside the container.
+  // The container is fixed inset-0, so it IS the scroll viewport.
+  // Scroll events on it reliably fire — no window interference.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-            const idx = Number((entry.target as HTMLElement).dataset.index)
-            if (!isNaN(idx)) setActiveIndex(idx)
-          }
-        })
-      },
-      { root: container, threshold: 0.5 },
-    )
+    const onScroll = () => {
+      const h = container.clientHeight
+      if (!h) return
+      const idx = Math.round(container.scrollTop / h)
+      setActiveIndex(idx)
+    }
 
-    container.querySelectorAll('[data-reel]').forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
-  }, [visibleMovies.length])
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => container.removeEventListener('scroll', onScroll)
+  }, [])
 
   if (isLoading) {
     return (
@@ -302,8 +282,8 @@ export function ReelsPage() {
   }
 
   return (
-    <div className="relative">
-      {/* Global mute toggle — fixed so it's always reachable */}
+    <>
+      {/* Mute toggle — above the fixed scroll container */}
       <button
         onClick={() => setIsMuted((m) => !m)}
         title={isMuted ? 'Unmute' : 'Mute'}
@@ -312,9 +292,15 @@ export function ReelsPage() {
         {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
       </button>
 
+      {/*
+        fixed inset-0 z-10 — the container IS the viewport for scrolling.
+        This bypasses the window scroll entirely, so the page footer
+        can never steal scroll events away from the reels.
+        The navbar sits at z-50 above this.
+      */}
       <div
         ref={containerRef}
-        className="h-[calc(100dvh_-_4rem)] overflow-y-scroll snap-y snap-mandatory"
+        className="fixed inset-0 z-10 overflow-y-scroll snap-y snap-mandatory"
       >
         {visibleMovies.map((movie, i) => (
           <ReelCard
@@ -328,6 +314,6 @@ export function ReelsPage() {
           />
         ))}
       </div>
-    </div>
+    </>
   )
 }
