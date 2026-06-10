@@ -1,12 +1,19 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Bookmark, BookmarkCheck, Info, Volume2, VolumeX, X, Play, Film } from 'lucide-react'
+import { Bookmark, BookmarkCheck, Info, Volume2, VolumeX, Play, Film } from 'lucide-react'
 import { useTrending } from '@/hooks/useMovies'
 import { useAddToWatchlist, useIsInWatchlist } from '@/hooks/useWatchlist'
 import { useAuth } from '@/context/AuthContext'
 import { getMovieDetail } from '@/api/movies'
 import type { MovieSearchResult, MovieDetail } from '@/types'
+
+function postToIframe(iframe: HTMLIFrameElement | null, func: string) {
+  iframe?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'command', func, args: [] }),
+    '*',
+  )
+}
 
 // ─── Action button ────────────────────────────────────────────────────────────
 
@@ -42,6 +49,7 @@ function ReelCard({
   isActive,
   isPrefetch,
   isMuted,
+  onMuteToggle,
   index,
   onHide,
 }: {
@@ -49,6 +57,7 @@ function ReelCard({
   isActive: boolean
   isPrefetch: boolean
   isMuted: boolean
+  onMuteToggle: () => void
   index: number
   onHide: () => void
 }) {
@@ -60,7 +69,6 @@ function ReelCard({
   const [videoLoaded, setVideoLoaded] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
-  // Fetch detail (trailerKey + genres) only for the active reel and the next one
   const { data: detail } = useQuery<MovieDetail>({
     queryKey: ['movies', 'detail', movie.tmdbId, movie.mediaType],
     queryFn: () => getMovieDetail(movie.tmdbId, movie.mediaType),
@@ -73,35 +81,36 @@ function ReelCard({
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null
   const isSaved = inWatchlist || optimisticSaved
 
-  // Reset fade-in when the trailer or active state changes
   useEffect(() => {
     setVideoLoaded(false)
   }, [trailerKey, isActive])
 
-  // Kill audio immediately when this reel scrolls out of view
+  // Kill the previous reel's audio the instant it goes off-screen
   useEffect(() => {
     if (!isActive && iframeRef.current) {
       iframeRef.current.src = 'about:blank'
     }
   }, [isActive])
 
-  // After the YouTube player loads, apply the current mute preference.
-  // iframes always start with mute=1 (browsers only allow muted autoplay),
-  // so we send unMute here if the user hasn't silenced the feed.
-  // 600ms delay gives the YT player time to fully initialise before accepting commands.
+  // When a new reel's video finishes loading, attempt to apply the current mute
+  // preference. Works on Chrome desktop/Android (where a prior user gesture on
+  // the page is sufficient); Safari may still block it.
   useEffect(() => {
     if (!videoLoaded) return
     const t = setTimeout(() => {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: [] }),
-        '*',
-      )
-    }, 600)
+      postToIframe(iframeRef.current, isMuted ? 'mute' : 'unMute')
+    }, 500)
     return () => clearTimeout(t)
-  }, [videoLoaded, isMuted])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoLoaded]) // intentionally excludes isMuted — this is "on load" only
 
-  // Always start muted — browsers only allow muted autoplay in iframes.
-  // Mute state is toggled post-load via postMessage (above).
+  // Mute button handler: fires synchronously inside the click event so the
+  // browser treats it as a user gesture, which is required for audio in iframes.
+  const handleMuteToggle = () => {
+    postToIframe(iframeRef.current, isMuted ? 'unMute' : 'mute')
+    onMuteToggle()
+  }
+
   const iframeSrc =
     isActive && trailerKey
       ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&rel=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1`
@@ -118,10 +127,9 @@ function ReelCard({
   }
 
   return (
-    // h-screen fills the full fixed container height (= 100vh)
     <div className="relative h-screen w-full snap-start overflow-hidden flex-shrink-0 bg-cinema-black">
 
-      {/* Backdrop — visible until video fades in */}
+      {/* Backdrop */}
       {movie.backdropUrl && (
         <img
           src={movie.backdropUrl}
@@ -132,7 +140,7 @@ function ReelCard({
         />
       )}
 
-      {/* YouTube trailer — covers full reel using the 16:9 letterbox trick */}
+      {/* YouTube trailer */}
       {iframeSrc && (
         <iframe
           ref={iframeRef}
@@ -147,7 +155,6 @@ function ReelCard({
         />
       )}
 
-      {/* No-trailer indicator */}
       {isActive && detail && !trailerKey && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2 text-white/30 pointer-events-none">
           <Film size={40} />
@@ -155,25 +162,17 @@ function ReelCard({
         </div>
       )}
 
-      {/* Gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/5 to-black/70 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-transparent to-transparent pointer-events-none" />
 
-      {/* Top bar — pushed down below the fixed navbar (h-16 = 4rem) */}
+      {/* Top bar */}
       <div className="absolute top-20 left-0 right-0 flex items-center justify-between px-4">
         <span className="text-white/40 text-xs font-body tabular-nums">
           {String(index + 1).padStart(2, '0')}
         </span>
-        <button
-          onClick={onHide}
-          className="p-1.5 rounded-full bg-black/30 text-white/60 hover:text-white hover:bg-black/50 transition-colors"
-        >
-          <X size={15} />
-        </button>
       </div>
 
       {/* Right action column */}
-      <div className="absolute right-3 bottom-32 flex flex-col gap-5 items-center">
+      <div className="absolute right-3 bottom-36 flex flex-col gap-5 items-center">
         <ActionBtn
           icon={
             isSaved ? (
@@ -200,6 +199,26 @@ function ReelCard({
             }
           />
         )}
+
+        {/* Mute button lives inside the active reel — click fires synchronously
+            in user-gesture context so the browser allows audio toggle */}
+        {isActive && (
+          <button
+            onClick={handleMuteToggle}
+            className="flex flex-col items-center gap-1 group"
+          >
+            <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10 group-hover:border-white/40 group-hover:bg-black/60 transition-all">
+              {isMuted ? (
+                <VolumeX size={24} className="text-white" />
+              ) : (
+                <Volume2 size={24} className="text-white" />
+              )}
+            </div>
+            <span className="text-white/70 text-[11px] font-body">
+              {isMuted ? 'Unmute' : 'Mute'}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Bottom info */}
@@ -216,11 +235,9 @@ function ReelCard({
             ))}
           </div>
         )}
-
         <h2 className="text-white text-xl font-heading font-bold leading-tight mb-1">
           {movie.title}
         </h2>
-
         <div className="flex items-center gap-1.5 text-white/60 text-sm font-body flex-wrap">
           <span className="text-yellow-400 text-xs">★</span>
           <span>{movie.voteAverage.toFixed(1)}</span>
@@ -238,6 +255,14 @@ function ReelCard({
           )}
         </div>
       </div>
+
+      {/* Dismiss button bottom-left corner */}
+      <button
+        onClick={onHide}
+        className="absolute top-20 right-4 p-1.5 rounded-full bg-black/30 text-white/60 hover:text-white hover:bg-black/50 transition-colors"
+      >
+        ✕
+      </button>
     </div>
   )
 }
@@ -247,25 +272,24 @@ function ReelCard({
 export function ReelsPage() {
   const { data: movies = [], isLoading } = useTrending()
   const [activeIndex, setActiveIndex] = useState(0)
-  const [isMuted, setIsMuted] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
 
   const visibleMovies = movies.filter((m) => !hiddenIds.has(m.tmdbId))
 
-  // The container is fixed inset-0, so it IS the scroll viewport.
-  // Scroll events on it reliably fire — no window interference.
+  const handleMuteToggle = useCallback(() => {
+    setIsMuted((m) => !m)
+  }, [])
+
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-
     const onScroll = () => {
       const h = container.clientHeight
       if (!h) return
-      const idx = Math.round(container.scrollTop / h)
-      setActiveIndex(idx)
+      setActiveIndex(Math.round(container.scrollTop / h))
     }
-
     container.addEventListener('scroll', onScroll, { passive: true })
     return () => container.removeEventListener('scroll', onScroll)
   }, [])
@@ -299,38 +323,22 @@ export function ReelsPage() {
   }
 
   return (
-    <>
-      {/* Mute toggle — above the fixed scroll container */}
-      <button
-        onClick={() => setIsMuted((m) => !m)}
-        title={isMuted ? 'Unmute' : 'Mute'}
-        className="fixed bottom-6 right-4 z-40 p-3 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white hover:bg-black/80 transition-all shadow-lg"
-      >
-        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-      </button>
-
-      {/*
-        fixed inset-0 z-10 — the container IS the viewport for scrolling.
-        This bypasses the window scroll entirely, so the page footer
-        can never steal scroll events away from the reels.
-        The navbar sits at z-50 above this.
-      */}
-      <div
-        ref={containerRef}
-        className="fixed inset-0 z-10 overflow-y-scroll snap-y snap-mandatory"
-      >
-        {visibleMovies.map((movie, i) => (
-          <ReelCard
-            key={movie.tmdbId}
-            movie={movie}
-            isActive={i === activeIndex}
-            isPrefetch={i === activeIndex + 1}
-            isMuted={isMuted}
-            index={i}
-            onHide={() => setHiddenIds((prev) => new Set([...prev, movie.tmdbId]))}
-          />
-        ))}
-      </div>
-    </>
+    <div
+      ref={containerRef}
+      className="fixed inset-0 z-10 overflow-y-scroll snap-y snap-mandatory"
+    >
+      {visibleMovies.map((movie, i) => (
+        <ReelCard
+          key={movie.tmdbId}
+          movie={movie}
+          isActive={i === activeIndex}
+          isPrefetch={i === activeIndex + 1}
+          isMuted={isMuted}
+          onMuteToggle={handleMuteToggle}
+          index={i}
+          onHide={() => setHiddenIds((prev) => new Set([...prev, movie.tmdbId]))}
+        />
+      ))}
+    </div>
   )
 }
