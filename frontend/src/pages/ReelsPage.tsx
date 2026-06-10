@@ -73,6 +73,13 @@ function ReelCard({
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null
   const isSaved = inWatchlist || optimisticSaved
 
+  // Kill audio immediately when this reel scrolls out of view
+  useEffect(() => {
+    if (!isActive && iframeRef.current) {
+      iframeRef.current.src = 'about:blank'
+    }
+  }, [isActive])
+
   // Re-trigger fade-in animation when trailer key arrives or active state changes
   useEffect(() => {
     setVideoLoaded(false)
@@ -244,19 +251,27 @@ export function ReelsPage() {
 
   const visibleMovies = movies.filter((m) => !hiddenIds.has(m.tmdbId))
 
-  // Derive active index from scroll position — each card is exactly container height
+  // IntersectionObserver with the scroll container as root — reliably fires when
+  // a card crosses the 50% visibility threshold inside the container.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const handleScroll = () => {
-      const cardHeight = container.clientHeight
-      if (cardHeight === 0) return
-      const idx = Math.round(container.scrollTop / cardHeight)
-      setActiveIndex(idx)
-    }
-    container.addEventListener('scroll', handleScroll, { passive: true })
-    return () => container.removeEventListener('scroll', handleScroll)
-  }, [])
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            const idx = Number((entry.target as HTMLElement).dataset.index)
+            if (!isNaN(idx)) setActiveIndex(idx)
+          }
+        })
+      },
+      { root: container, threshold: 0.5 },
+    )
+
+    container.querySelectorAll('[data-reel]').forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [visibleMovies.length])
 
   if (isLoading) {
     return (
