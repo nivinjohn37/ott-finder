@@ -73,6 +73,11 @@ function ReelCard({
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null
   const isSaved = inWatchlist || optimisticSaved
 
+  // Track current mute state in a ref so the videoLoaded effect can read it
+  // without going stale
+  const isMutedRef = useRef(isMuted)
+  useEffect(() => { isMutedRef.current = isMuted }, [isMuted])
+
   // Reset fade-in when active state or trailer changes
   useEffect(() => {
     setVideoLoaded(false)
@@ -85,9 +90,35 @@ function ReelCard({
     }
   }, [isActive])
 
+  // Mute/unmute via postMessage — no remount needed.
+  // Remounting with mute=0&autoplay=1 is blocked by browser autoplay policy;
+  // sending unMute to an already-playing iframe is allowed.
+  useEffect(() => {
+    const win = iframeRef.current?.contentWindow
+    if (!win) return
+    win.postMessage(
+      JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: [] }),
+      '*',
+    )
+  }, [isMuted])
+
+  // After a new reel's video loads, honour the current mute preference
+  useEffect(() => {
+    if (!videoLoaded || isMutedRef.current) return
+    const t = setTimeout(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
+        '*',
+      )
+    }, 300) // give the YouTube player a moment to initialise before commanding it
+    return () => clearTimeout(t)
+  }, [videoLoaded])
+
+  // Always start muted — browsers only allow muted autoplay in iframes.
+  // Mute state is toggled post-load via postMessage (above).
   const iframeSrc =
     isActive && trailerKey
-      ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&rel=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1`
+      ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&rel=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1`
       : ''
 
   const handleSave = async () => {
@@ -119,7 +150,7 @@ function ReelCard({
       {iframeSrc && (
         <iframe
           ref={iframeRef}
-          key={`${trailerKey}-${isMuted}`}
+          key={trailerKey}
           src={iframeSrc}
           onLoad={() => setVideoLoaded(true)}
           title={movie.title}
