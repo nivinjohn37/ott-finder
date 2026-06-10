@@ -73,46 +73,32 @@ function ReelCard({
   const year = movie.releaseDate ? new Date(movie.releaseDate).getFullYear() : null
   const isSaved = inWatchlist || optimisticSaved
 
-  // Track current mute state in a ref so the videoLoaded effect can read it
-  // without going stale
-  const isMutedRef = useRef(isMuted)
-  useEffect(() => { isMutedRef.current = isMuted }, [isMuted])
-
-  // Reset fade-in when active state or trailer changes
+  // Reset fade-in when the trailer or active state changes
   useEffect(() => {
     setVideoLoaded(false)
   }, [trailerKey, isActive])
 
-  // Stop audio the instant a reel goes off-screen, before React finishes unmounting
+  // Kill audio immediately when this reel scrolls out of view
   useEffect(() => {
     if (!isActive && iframeRef.current) {
       iframeRef.current.src = 'about:blank'
     }
   }, [isActive])
 
-  // Mute/unmute via postMessage — no remount needed.
-  // Remounting with mute=0&autoplay=1 is blocked by browser autoplay policy;
-  // sending unMute to an already-playing iframe is allowed.
+  // After the YouTube player loads, apply the current mute preference.
+  // iframes always start with mute=1 (browsers only allow muted autoplay),
+  // so we send unMute here if the user hasn't silenced the feed.
+  // 600ms delay gives the YT player time to fully initialise before accepting commands.
   useEffect(() => {
-    const win = iframeRef.current?.contentWindow
-    if (!win) return
-    win.postMessage(
-      JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: [] }),
-      '*',
-    )
-  }, [isMuted])
-
-  // After a new reel's video loads, honour the current mute preference
-  useEffect(() => {
-    if (!videoLoaded || isMutedRef.current) return
+    if (!videoLoaded) return
     const t = setTimeout(() => {
       iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func: 'unMute', args: [] }),
+        JSON.stringify({ event: 'command', func: isMuted ? 'mute' : 'unMute', args: [] }),
         '*',
       )
-    }, 300) // give the YouTube player a moment to initialise before commanding it
+    }, 600)
     return () => clearTimeout(t)
-  }, [videoLoaded])
+  }, [videoLoaded, isMuted])
 
   // Always start muted — browsers only allow muted autoplay in iframes.
   // Mute state is toggled post-load via postMessage (above).
@@ -261,7 +247,7 @@ function ReelCard({
 export function ReelsPage() {
   const { data: movies = [], isLoading } = useTrending()
   const [activeIndex, setActiveIndex] = useState(0)
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
 
