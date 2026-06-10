@@ -36,7 +36,7 @@ public class ClaudeAiService implements AiService {
     private String baseUrl;
 
     private static final String MODEL        = "claude-haiku-4-5-20251001";
-    private static final String VISION_MODEL = "claude-fable-5";
+    private static final String VISION_MODEL = "claude-opus-4-8";
     private static final String API_VERSION  = "2023-06-01";
 
     public ClaudeAiService(@Qualifier("aiRestTemplate") RestTemplate restTemplate,
@@ -174,6 +174,7 @@ public class ClaudeAiService implements AiService {
                     "messages", List.of(Map.of("role", "user", "content", content))
             );
 
+            log.info("Calling Claude vision model={}", VISION_MODEL);
             ResponseEntity<Map> response = restTemplate.exchange(
                     baseUrl + "/v1/messages",
                     HttpMethod.POST,
@@ -188,12 +189,13 @@ public class ClaudeAiService implements AiService {
                 Map<String, Object> usage = (Map<String, Object>) response.getBody().get("usage");
                 int inputTokens  = usage != null ? ((Number) usage.getOrDefault("input_tokens",  0)).intValue() : 0;
                 int outputTokens = usage != null ? ((Number) usage.getOrDefault("output_tokens", 0)).intValue() : 0;
+                log.info("Claude vision response: status={} inputTokens={} outputTokens={}", response.getStatusCode(), inputTokens, outputTokens);
                 if (respContent != null && !respContent.isEmpty()) {
                     return new ClaudeResponse((String) respContent.get(0).get("text"), inputTokens, outputTokens);
                 }
             }
         } catch (Exception ex) {
-            log.warn("Claude vision API call failed: {}", ex.getMessage());
+            log.error("Claude vision API call failed: {} — {}", ex.getClass().getSimpleName(), ex.getMessage());
         }
         return null;
     }
