@@ -92,17 +92,27 @@ function ReelCard({
     }
   }, [isActive])
 
-  // When a new reel's video finishes loading, attempt to apply the current mute
-  // preference. Works on Chrome desktop/Android (where a prior user gesture on
-  // the page is sufficient); Safari may still block it.
+  // Listen for YouTube player events sent back via postMessage.
+  // When the video transitions to playing (state 1) we immediately apply the
+  // current mute preference.  This fires at exactly the right moment — the
+  // player is guaranteed to be ready — and avoids guessing with a setTimeout.
   useEffect(() => {
-    if (!videoLoaded) return
-    const t = setTimeout(() => {
-      postToIframe(iframeRef.current, isMuted ? 'mute' : 'unMute')
-    }, 500)
-    return () => clearTimeout(t)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoLoaded]) // intentionally excludes isMuted — this is "on load" only
+    if (!isActive) return
+    const onYTMessage = (e: MessageEvent) => {
+      try {
+        const msg = typeof e.data === 'string' ? JSON.parse(e.data) : null
+        if (!msg) return
+        // info: 1 = playing
+        if (msg.event === 'onStateChange' && msg.info === 1) {
+          postToIframe(iframeRef.current, isMuted ? 'mute' : 'unMute')
+        }
+      } catch {
+        // malformed postMessage from unrelated origin — ignore
+      }
+    }
+    window.addEventListener('message', onYTMessage)
+    return () => window.removeEventListener('message', onYTMessage)
+  }, [isActive, isMuted])
 
   // Mute button handler: fires synchronously inside the click event so the
   // browser treats it as a user gesture, which is required for audio in iframes.
@@ -113,7 +123,7 @@ function ReelCard({
 
   const iframeSrc =
     isActive && trailerKey
-      ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&rel=0&loop=1&playlist=${trailerKey}&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1`
+      ? `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&rel=0&iv_load_policy=3&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`
       : ''
 
   const handleSave = async () => {
