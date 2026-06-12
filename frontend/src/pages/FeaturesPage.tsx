@@ -5,7 +5,8 @@ import {
   Search, Tv2, Bookmark, Star, Users, Trophy, Lightbulb,
   User, Award, Palette, TrendingUp, Zap, ArrowRight, Play,
   CheckCircle2, Heart, Globe, Smartphone, Share2, MoreHorizontal,
-  Sparkles, Clock, ThumbsUp, History, Settings2, Bell, Brain, Rocket, Compass, FileText,
+  Sparkles, Clock, ThumbsUp, History, Settings2, Bell, Brain, Rocket, Compass,
+  FileText, Dice6, Camera, Languages, Clapperboard, Ticket,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
@@ -47,11 +48,90 @@ function FadeIn({ children, delay = 0, className = '' }: {
 }
 
 /* ─── Feature data ───────────────────────────────────────────────────────────── */
+
+// AI-powered features get their own spotlight section
+const AI_FEATURES = [
+  {
+    icon: Compass,
+    title: 'Mood-based Discovery',
+    description: 'Answer 6 quick questions — vibe, company, language (including Malayalam, Tamil, Telugu, Korean), era, and type — and Claude picks the perfect movies from its world knowledge.',
+    color: '#A78BFA',
+    link: '/discover',
+    linkLabel: 'Try Discover →',
+    badge: 'Most loved',
+  },
+  {
+    icon: FileText,
+    title: 'AI Review Summary',
+    description: 'Claude reads community reviews and writes a clean spoiler-free summary with sentiment chips. Flip to Full mode for deeper plot details. Updated every 48 hours.',
+    color: '#818CF8',
+    link: null,
+    linkLabel: null,
+    badge: null,
+  },
+  {
+    icon: Languages,
+    title: 'Natural Language Search',
+    description: 'Type exactly what you\'re feeling — "a sad Malayalam movie from 2022 on Netflix" — and Claude understands your intent and returns matching titles instantly.',
+    color: '#C084FC',
+    link: '/search?mode=ai',
+    linkLabel: 'Try AI Search →',
+    badge: 'New',
+  },
+  {
+    icon: Camera,
+    title: 'Snap Search',
+    description: 'Upload a photo of a poster, DVD cover, or screenshot from social media and Claude identifies the movie or show instantly — no typing needed.',
+    color: '#F0ABFC',
+    link: '/search?mode=snap',
+    linkLabel: 'Try Snap Search →',
+    badge: 'New',
+  },
+]
+
+// Unique interactive features that deserve their own spotlight
+const COOL_FEATURES = [
+  {
+    icon: Dice6,
+    emoji: '🎰',
+    title: 'Movie Roulette',
+    tagline: "Can't decide? Let fate pick.",
+    description: 'Hit Spin and a slot-machine animation picks tonight\'s watch from trending titles. Filter by platform or movie vs TV to narrow the pool — then embrace whatever comes up.',
+    color: '#F04E28',
+    bg: 'rgba(240,78,40,0.06)',
+    border: 'rgba(240,78,40,0.2)',
+    link: '/roulette',
+    linkLabel: 'Spin Now',
+    bullets: [
+      'Slot-machine animation with deceleration',
+      'Filter by platform or Movie / TV Show',
+      'Add to watchlist without leaving the page',
+    ],
+  },
+  {
+    icon: Clapperboard,
+    emoji: '🎬',
+    title: 'WatchReels',
+    tagline: 'Trailers. TikTok-style.',
+    description: 'Swipe through trending trailers in a vertical feed. Each reel plays the actual YouTube trailer with sound. Find your next obsession in under 60 seconds — no algorithm, just great movies.',
+    color: '#8B5CF6',
+    bg: 'rgba(139,92,246,0.06)',
+    border: 'rgba(139,92,246,0.2)',
+    link: '/reels',
+    linkLabel: 'Open Reels',
+    bullets: [
+      'Full-screen vertical scroll, one reel per swipe',
+      'Real trailers with sound — unmute anytime',
+      'Save to watchlist or jump to details mid-reel',
+    ],
+  },
+]
+
 const FEATURES = [
   {
     icon: Search,
     title: 'Instant Discovery',
-    description: 'Search any movie or show and get results in milliseconds — powered by TMDB\'s entire catalogue.',
+    description: 'Search any movie or show and get results in milliseconds — powered by TMDB\'s entire catalogue. Autocomplete suggestions appear as you type.',
     color: '#38BDF8',
     bg: 'rgba(56,189,248,0.08)',
     border: 'rgba(56,189,248,0.2)',
@@ -63,6 +143,14 @@ const FEATURES = [
     color: '#8B5CF6',
     bg: 'rgba(139,92,246,0.08)',
     border: 'rgba(139,92,246,0.2)',
+  },
+  {
+    icon: Ticket,
+    title: 'In Theatres Now',
+    description: 'Browse what\'s playing on the big screen across India — filter by Malayalam, Tamil, Telugu, Kannada, Hindi or English — and book tickets on BookMyShow in one tap.',
+    color: '#F87171',
+    bg: 'rgba(248,113,113,0.08)',
+    border: 'rgba(248,113,113,0.2)',
   },
   {
     icon: Bookmark,
@@ -129,6 +217,14 @@ const FEATURES = [
     border: 'rgba(251,113,133,0.2)',
   },
   {
+    icon: Play,
+    title: 'In-app Trailers',
+    description: 'Watch trailers in a full-screen modal without leaving the app. No redirects, no ads.',
+    color: '#38BDF8',
+    bg: 'rgba(56,189,248,0.08)',
+    border: 'rgba(56,189,248,0.2)',
+  },
+  {
     icon: Palette,
     title: 'Dark & Light Theme',
     description: 'Looks great in any light. Your preference is saved across sessions — no flash on load.',
@@ -179,7 +275,7 @@ const FEATURES = [
   {
     icon: History,
     title: 'Recently Viewed',
-    description: 'Your last 10 titles are pinned on the homepage for quick access — no sign-in required to start, persists across sessions.',
+    description: 'Your last 10 titles are pinned on the homepage for quick access — no sign-in required, persists across sessions.',
     color: '#14B8A6',
     bg: 'rgba(20,184,166,0.08)',
     border: 'rgba(20,184,166,0.2)',
@@ -199,22 +295,6 @@ const FEATURES = [
     color: '#38BDF8',
     bg: 'rgba(56,189,248,0.08)',
     border: 'rgba(56,189,248,0.2)',
-  },
-  {
-    icon: FileText,
-    title: 'AI Review Summary',
-    description: 'Claude reads reviews from TMDB and Reddit and writes a clean spoiler-free summary with keyword chips. Flip to Full mode for plot details.',
-    color: '#A78BFA',
-    bg: 'rgba(167,139,250,0.08)',
-    border: 'rgba(167,139,250,0.2)',
-  },
-  {
-    icon: Compass,
-    title: 'Mood-based Discovery',
-    description: 'Answer 5 quick questions — vibe, company, language (including Malayalam, Tamil, Telugu), era, and length — and Claude picks 5 perfect movies from its world knowledge.',
-    color: '#EC4899',
-    bg: 'rgba(236,72,153,0.08)',
-    border: 'rgba(236,72,153,0.2)',
   },
 ]
 
@@ -285,13 +365,11 @@ export function FeaturesPage() {
 
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section className="relative min-h-[90vh] flex items-center justify-center text-center px-4 pt-24 pb-20 overflow-hidden">
-        {/* Background glows */}
         <div className="absolute inset-0 bg-hero-glow pointer-events-none" />
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-accent/5 blur-[120px] pointer-events-none" />
         <div className="absolute top-1/2 left-1/4 w-[300px] h-[300px] rounded-full bg-[#38BDF8]/5 blur-[100px] pointer-events-none" />
         <div className="absolute top-1/2 right-1/4 w-[300px] h-[300px] rounded-full bg-[#8B5CF6]/5 blur-[100px] pointer-events-none" />
 
-        {/* Floating orbs */}
         <motion.div
           animate={{ y: [-10, 10, -10] }}
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
@@ -309,7 +387,6 @@ export function FeaturesPage() {
         />
 
         <div className="relative max-w-4xl mx-auto">
-          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -320,7 +397,6 @@ export function FeaturesPage() {
             Your complete movie companion
           </motion.div>
 
-          {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -331,7 +407,6 @@ export function FeaturesPage() {
             <span className="text-gradient">Watch Together.</span>
           </motion.h1>
 
-          {/* Subheading */}
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -343,7 +418,6 @@ export function FeaturesPage() {
             what you've watched, and lets you compete with friends on who watches the most.
           </motion.p>
 
-          {/* CTAs */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -386,6 +460,99 @@ export function FeaturesPage() {
         </section>
       </FadeIn>
 
+      {/* ── AI Superpowers ──────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden border-b border-cinema-navy-border">
+        {/* Deep purple gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0a2e] via-[#0d0820] to-[#060b19] pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-purple-600/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[300px] rounded-full bg-violet-500/8 blur-[100px] pointer-events-none" />
+
+        {/* Animated sparkle particles */}
+        <motion.div
+          animate={{ y: [-8, 8, -8], opacity: [0.4, 0.9, 0.4] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-16 left-[8%] w-1.5 h-1.5 rounded-full bg-purple-400"
+        />
+        <motion.div
+          animate={{ y: [6, -10, 6], opacity: [0.3, 0.8, 0.3] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
+          className="absolute top-24 right-[10%] w-1 h-1 rounded-full bg-violet-300"
+        />
+        <motion.div
+          animate={{ y: [-5, 9, -5], opacity: [0.2, 0.6, 0.2] }}
+          transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', delay: 0.7 }}
+          className="absolute bottom-20 left-[20%] w-2 h-2 rounded-full bg-fuchsia-400/60"
+        />
+
+        <div className="relative max-w-6xl mx-auto px-4 py-24">
+          <FadeUp className="text-center mb-14">
+            {/* Claude AI badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-purple-500/40 bg-purple-500/10 text-purple-300 text-xs font-body font-semibold mb-5">
+              <Sparkles size={11} fill="currentColor" className="text-purple-400" />
+              Powered by Claude AI · Anthropic
+            </div>
+            <h2 className="font-heading font-bold text-3xl sm:text-5xl text-white leading-tight mb-4">
+              AI that actually{' '}
+              <span className="bg-gradient-to-r from-purple-400 via-violet-300 to-fuchsia-400 bg-clip-text text-transparent">
+                understands movies
+              </span>
+            </h2>
+            <p className="text-purple-200/50 font-body text-base max-w-xl mx-auto">
+              Not keyword matching. Not star ratings. Claude reads, reasons, and recommends
+              like a friend who's watched everything.
+            </p>
+          </FadeUp>
+
+          <div className="grid sm:grid-cols-2 gap-5">
+            {AI_FEATURES.map((f, i) => (
+              <FadeUp key={f.title} delay={i * 0.1}>
+                <div
+                  className="relative rounded-2xl p-6 border border-purple-500/15 bg-white/[0.03] backdrop-blur-sm hover:border-purple-500/35 hover:bg-white/[0.05] transition-all duration-300 group h-full flex flex-col"
+                >
+                  {/* Badge */}
+                  {f.badge && (
+                    <div className="absolute top-4 right-4 px-2.5 py-0.5 rounded-full text-[10px] font-body font-bold uppercase tracking-wider"
+                      style={{
+                        background: f.badge === 'New' ? 'rgba(167,139,250,0.15)' : 'rgba(240,78,40,0.15)',
+                        color: f.badge === 'New' ? '#A78BFA' : '#F04E28',
+                        border: f.badge === 'New' ? '1px solid rgba(167,139,250,0.3)' : '1px solid rgba(240,78,40,0.3)',
+                      }}
+                    >
+                      {f.badge}
+                    </div>
+                  )}
+
+                  {/* Icon */}
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110 duration-300 shrink-0"
+                    style={{ background: `${f.color}18`, border: `1px solid ${f.color}30` }}
+                  >
+                    <f.icon size={22} style={{ color: f.color }} />
+                  </div>
+
+                  <h3 className="font-heading font-bold text-white text-base mb-2">
+                    {f.title}
+                  </h3>
+                  <p className="text-purple-200/50 text-sm font-body leading-relaxed flex-1">
+                    {f.description}
+                  </p>
+
+                  {f.link && (
+                    <Link
+                      to={f.link}
+                      className="inline-flex items-center gap-1 mt-4 text-xs font-body font-semibold transition-colors"
+                      style={{ color: f.color }}
+                    >
+                      {f.linkLabel}
+                    </Link>
+                  )}
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── How it works ────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 py-24">
         <FadeUp className="text-center mb-16">
@@ -398,12 +565,12 @@ export function FeaturesPage() {
         </FadeUp>
 
         <div className="grid sm:grid-cols-3 gap-6 relative">
-          {/* Connecting line on desktop */}
           <div className="hidden sm:block absolute top-10 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-cinema-navy-border to-transparent" />
 
           {STEPS.map((step, i) => (
             <FadeUp key={step.number} delay={i * 0.12}>
-              <div className="relative flex flex-col items-center text-center p-6 rounded-2xl bg-cinema-navy border border-cinema-navy-border hover:border-opacity-60 transition-all group"
+              <div
+                className="relative flex flex-col items-center text-center p-6 rounded-2xl bg-cinema-navy border border-cinema-navy-border hover:border-opacity-60 transition-all group"
                 style={{ '--hover-color': step.color } as React.CSSProperties}
               >
                 <div
@@ -430,8 +597,76 @@ export function FeaturesPage() {
         </div>
       </section>
 
-      {/* ── Features grid ───────────────────────────────────────────────────── */}
+      {/* ── Cool Features Spotlight ─────────────────────────────────────────── */}
       <section className="bg-cinema-navy/30 border-y border-cinema-navy-border">
+        <div className="max-w-5xl mx-auto px-4 py-24">
+          <FadeUp className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/8 text-accent text-xs font-body font-semibold mb-5">
+              <Zap size={11} fill="currentColor" />
+              Only on WatchMate
+            </div>
+            <h2 className="font-heading font-bold text-3xl sm:text-4xl text-cinema-text mb-4">
+              Features you won't find anywhere else
+            </h2>
+            <p className="text-cinema-muted/60 font-body text-base max-w-xl mx-auto">
+              Built for people who actually care about movies — not just another streaming tracker.
+            </p>
+          </FadeUp>
+
+          <div className="grid sm:grid-cols-2 gap-6">
+            {COOL_FEATURES.map((f, i) => (
+              <FadeUp key={f.title} delay={i * 0.12}>
+                <div
+                  className="rounded-3xl overflow-hidden border p-8 h-full flex flex-col group hover:scale-[1.01] transition-transform duration-300"
+                  style={{ background: f.bg, borderColor: f.border }}
+                >
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300"
+                      style={{ background: `${f.color}20`, border: `1px solid ${f.color}35` }}
+                    >
+                      <f.icon size={22} style={{ color: f.color }} />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-bold text-cinema-text text-lg leading-tight">
+                        {f.emoji} {f.title}
+                      </h3>
+                      <p className="text-xs font-body font-semibold mt-0.5" style={{ color: f.color }}>
+                        {f.tagline}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-cinema-muted/70 font-body text-sm leading-relaxed mb-5">
+                    {f.description}
+                  </p>
+
+                  <ul className="space-y-2 mb-6 flex-1">
+                    {f.bullets.map((b) => (
+                      <li key={b} className="flex items-center gap-2.5 text-sm font-body text-cinema-muted/70">
+                        <CheckCircle2 size={13} style={{ color: f.color }} className="shrink-0" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    to={f.link}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-body font-semibold text-sm text-white w-fit transition-all hover:shadow-lg hover:scale-105"
+                    style={{ background: `linear-gradient(135deg, ${f.color}, ${f.color}bb)` }}
+                  >
+                    {f.linkLabel} <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features grid ───────────────────────────────────────────────────── */}
+      <section className="border-b border-cinema-navy-border">
         <div className="max-w-6xl mx-auto px-4 py-24">
           <FadeUp className="text-center mb-16">
             <p className="text-accent text-xs font-body font-semibold uppercase tracking-widest mb-3">
@@ -513,10 +748,8 @@ export function FeaturesPage() {
               </div>
             </FadeUp>
 
-            {/* Visual mockup */}
             <FadeUp delay={0.15}>
               <div className="space-y-3">
-                {/* Leaderboard card mockup */}
                 <div className="rounded-2xl bg-cinema-navy border border-cinema-navy-border p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Trophy size={14} className="text-yellow-400" />
@@ -545,7 +778,6 @@ export function FeaturesPage() {
                   ))}
                 </div>
 
-                {/* Suggestion card mockup */}
                 <div className="rounded-2xl bg-cinema-navy border border-cinema-navy-border p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Lightbulb size={14} className="text-[#EC4899]" />
@@ -725,7 +957,6 @@ export function FeaturesPage() {
                 ))}
               </ol>
 
-              {/* Android tip */}
               <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-[#34A853]/08 border border-[#34A853]/20">
                 <MoreHorizontal size={13} className="text-[#34A853] mt-0.5 shrink-0" />
                 <p className="text-[#34A853]/80 text-xs font-body leading-relaxed">
@@ -736,7 +967,6 @@ export function FeaturesPage() {
           </FadeUp>
         </div>
 
-        {/* PWA benefits strip */}
         <FadeUp delay={0.15} className="mt-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
@@ -773,7 +1003,6 @@ export function FeaturesPage() {
           {COMING_SOON.map((f, i) => (
             <FadeUp key={f.title} delay={Math.min(i * 0.08, 0.4)}>
               <div className="rounded-2xl p-5 border border-cinema-navy-border bg-cinema-navy/40 relative overflow-hidden group">
-                {/* Coming soon badge */}
                 <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-cinema-surface border border-cinema-navy-border text-cinema-muted/50 text-2xs font-body font-semibold uppercase tracking-wider">
                   Soon
                 </div>
@@ -800,7 +1029,6 @@ export function FeaturesPage() {
       <section className="max-w-4xl mx-auto px-4 py-24 text-center">
         <FadeUp>
           <div className="relative rounded-3xl border border-cinema-navy-border bg-gradient-to-br from-cinema-navy via-cinema-navy to-accent/5 p-10 sm:p-16 overflow-hidden">
-            {/* Glow */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-accent/10 blur-[80px] pointer-events-none" />
 
             <div className="relative">
