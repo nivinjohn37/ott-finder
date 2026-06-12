@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck, ChevronDown } from 'lucide-react'
+import { Search, Bookmark, LogOut, User, X, Menu, Sun, Moon, ShieldCheck, ChevronDown, Dice6, Clapperboard, Users, Sparkles } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { useRegion, REGIONS } from '@/context/RegionContext'
@@ -77,13 +77,9 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-6">
               <NavLink to="/" label="Home" />
               <NavLink to="/trending" label="Trending" />
-              <NavLink to="/in-theatres" label="🎟️ In Theatres" />
+              <NavLink to="/in-theatres" label="In Theatres" />
               <NavLink to="/discover" label="Discover" />
-              <NavLink to="/roulette" label="🎰 Roulette" />
-              <NavLink to="/reels" label="🎬 Reels" />
-              <NavLink to="/features" label="Features" />
-              {user && <NavLink to="/watchlist" label="My Watchlist" />}
-              {user && <NavLink to="/groups" label="Groups" />}
+              <ExploreDropdown showGroups={!!user} />
             </div>
 
             {/* Actions */}
@@ -251,10 +247,10 @@ export function Navbar() {
             <div className="flex flex-col gap-3">
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
-              <MobileLink to="/in-theatres" label="🎟️ In Theatres" />
+              <MobileLink to="/in-theatres" label="In Theatres" />
               <MobileLink to="/discover" label="Discover" />
-              <MobileLink to="/roulette" label="🎰 Roulette" />
-              <MobileLink to="/reels" label="🎬 Reels" />
+              <MobileLink to="/roulette" label="Movie Roulette" />
+              <MobileLink to="/reels" label="WatchReels" />
               <MobileLink to="/features" label="Features" />
               {user && <MobileLink to="/watchlist" label="My Watchlist" />}
               {user && <MobileLink to="/groups" label="Groups" />}
@@ -283,13 +279,84 @@ export function Navbar() {
   )
 }
 
+const EXPLORE_ITEMS = [
+  { to: '/roulette', label: 'Movie Roulette', icon: Dice6, hint: "Can't decide? Spin." },
+  { to: '/reels', label: 'WatchReels', icon: Clapperboard, hint: 'Trailers, TikTok-style' },
+  { to: '/groups', label: 'Groups', icon: Users, hint: 'Watch together', authOnly: true },
+  { to: '/features', label: 'All Features', icon: Sparkles, hint: 'Everything WatchMate does' },
+]
+
+function ExploreDropdown({ showGroups }: { showGroups: boolean }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const { pathname } = useLocation()
+  const items = EXPLORE_ITEMS.filter((i) => !i.authOnly || showGroups)
+  const active = items.some((i) => pathname.startsWith(i.to))
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  useEffect(() => { setOpen(false) }, [pathname])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1 font-body text-sm font-medium transition-colors relative group whitespace-nowrap ${
+          active ? 'text-cinema-text' : 'text-cinema-muted hover:text-cinema-text'
+        }`}
+      >
+        Explore
+        <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span
+          className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-accent transition-transform origin-left ${
+            active ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+          }`}
+        />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 top-full mt-3 z-50 bg-cinema-navy border border-cinema-navy-border rounded-xl shadow-lg py-1.5 min-w-56 overflow-hidden"
+          >
+            {items.map(({ to, label, icon: Icon, hint }) => (
+              <Link
+                key={to}
+                to={to}
+                className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors hover:bg-cinema-surface ${
+                  pathname.startsWith(to) ? 'text-accent' : 'text-cinema-text'
+                }`}
+              >
+                <Icon size={16} className={pathname.startsWith(to) ? 'text-accent' : 'text-cinema-muted'} />
+                <span className="flex flex-col">
+                  <span className="font-body text-sm font-medium leading-tight">{label}</span>
+                  <span className="font-body text-2xs text-cinema-muted">{hint}</span>
+                </span>
+              </Link>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 function NavLink({ to, label }: { to: string; label: string }) {
   const { pathname } = useLocation()
   const active = pathname === to
   return (
     <Link
       to={to}
-      className={`font-body text-sm font-medium transition-colors relative group ${
+      className={`font-body text-sm font-medium transition-colors relative group whitespace-nowrap ${
         active ? 'text-cinema-text' : 'text-cinema-muted hover:text-cinema-text'
       }`}
     >
