@@ -165,6 +165,7 @@ Features identified by studying JustWatch India. Each adds discoverability and e
 
 ### 6b — "What's New" & "Coming Soon" Pages
 
+- [x] **In Theatres page** `/in-theatres` *(shipped 2026-06-12)* — TMDB discover theatrical releases (region=IN, last 45 days) with language tabs (Malayalam/Tamil/Telugu/Kannada/Hindi/English). "Book Tickets" deep links to BookMyShow search on cards and on movie detail pages (movies released < 60 days). `GET /api/movies/now-playing?language=`, Redis `tmdb:now_playing:{lang}` TTL 12h. No ticketing API exists — booking is a hand-off, same pattern as OTT deep links. Real showtimes would need the commercial International Showtimes API (post-launch candidate).
 - [ ] **Coming Soon page** `/coming-soon` — TMDB `/movie/upcoming` + `/tv/on_the_air`. Show release date countdown badge per card. No JustWatch dependency. Redis TTL 6h.
 - [ ] **What's New page** `/new` — content newly added to each OTT platform. Requires scheduled job to diff JustWatch availability snapshots (complex). Phase 6b candidate; simpler fallback: TMDB `/movie/now_playing` + `/tv/airing_today` per region.
 

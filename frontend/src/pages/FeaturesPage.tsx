@@ -125,6 +125,23 @@ const COOL_FEATURES = [
       'Save to watchlist or jump to details mid-reel',
     ],
   },
+  {
+    icon: Ticket,
+    emoji: '🎟️',
+    title: 'In Theatres Now',
+    tagline: 'Big screen first.',
+    description: 'See what\'s playing in cinemas across India right now — with real coverage of Malayalam, Tamil, Telugu and Kannada releases, not just Bollywood. Then book your seats in one tap.',
+    color: '#F87171',
+    bg: 'rgba(248,113,113,0.06)',
+    border: 'rgba(248,113,113,0.2)',
+    link: '/in-theatres',
+    linkLabel: 'Browse Theatres',
+    bullets: [
+      'Filter by language — Malayalam to Hindi',
+      'One-tap Book Tickets via BookMyShow',
+      'Recent releases flagged "In theatres" on detail pages',
+    ],
+  },
 ]
 
 const FEATURES = [
@@ -143,14 +160,6 @@ const FEATURES = [
     color: '#8B5CF6',
     bg: 'rgba(139,92,246,0.08)',
     border: 'rgba(139,92,246,0.2)',
-  },
-  {
-    icon: Ticket,
-    title: 'In Theatres Now',
-    description: 'Browse what\'s playing on the big screen across India — filter by Malayalam, Tamil, Telugu, Kannada, Hindi or English — and book tickets on BookMyShow in one tap.',
-    color: '#F87171',
-    bg: 'rgba(248,113,113,0.08)',
-    border: 'rgba(248,113,113,0.2)',
   },
   {
     icon: Bookmark,
@@ -599,7 +608,7 @@ export function FeaturesPage() {
 
       {/* ── Cool Features Spotlight ─────────────────────────────────────────── */}
       <section className="bg-cinema-navy/30 border-y border-cinema-navy-border">
-        <div className="max-w-5xl mx-auto px-4 py-24">
+        <div className="max-w-6xl mx-auto px-4 py-24">
           <FadeUp className="text-center mb-14">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-accent/30 bg-accent/8 text-accent text-xs font-body font-semibold mb-5">
               <Zap size={11} fill="currentColor" />
@@ -613,7 +622,7 @@ export function FeaturesPage() {
             </p>
           </FadeUp>
 
-          <div className="grid sm:grid-cols-2 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {COOL_FEATURES.map((f, i) => (
               <FadeUp key={f.title} delay={i * 0.12}>
                 <div
