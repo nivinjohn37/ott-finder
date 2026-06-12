@@ -16,6 +16,13 @@ export async function getTrending(region?: string, language?: string): Promise<M
   return res.data.data ?? []
 }
 
+export async function getNowPlaying(language?: string): Promise<MovieSearchResult[]> {
+  const res = await api.get<ApiResponse<MovieSearchResult[]>>('/movies/now-playing', {
+    params: language && language !== 'all' ? { language } : undefined,
+  })
+  return res.data.data ?? []
+}
+
 export async function getMovieDetail(tmdbId: number, type?: string): Promise<MovieDetail> {
   const res = await api.get<ApiResponse<MovieDetail>>(`/movies/${tmdbId}`, {
     params: type ? { type } : undefined,

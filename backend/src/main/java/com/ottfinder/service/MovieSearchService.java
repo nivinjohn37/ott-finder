@@ -143,6 +143,12 @@ public class MovieSearchService {
         return trending;
     }
 
+    public List<MovieSearchResult> getNowPlaying(String language) {
+        List<MovieSearchResult> nowPlaying = tmdbService.getNowPlaying(language);
+        CompletableFuture.runAsync(() -> persistNewMovies(nowPlaying), apiCallExecutor);
+        return nowPlaying;
+    }
+
     public ShelvesResult getShelves(String firebaseUid) {
         // 3 TMDB discover calls in parallel
         CompletableFuture<List<MovieSearchResult>> netflixFuture = CompletableFuture

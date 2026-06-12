@@ -1,6 +1,6 @@
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Film, Share2, Check, Users, ChevronDown, Loader2 } from 'lucide-react'
+import { ArrowLeft, Star, Calendar, Tv2, BookmarkPlus, BookmarkCheck, ExternalLink, Play, X, Clock, User, Film, Share2, Check, Users, ChevronDown, Loader2, Ticket } from 'lucide-react'
 import { ActorDrawer } from '@/components/movie/ActorDrawer'
 import { GenreDrawer } from '@/components/movie/GenreDrawer'
 import { ReviewSection } from '@/components/movie/ReviewSection'
@@ -12,6 +12,15 @@ import { PlatformBadge } from '@/components/common/PlatformBadge'
 import { useAuth } from '@/context/AuthContext'
 import { useState, useEffect } from 'react'
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed'
+import { bookMyShowSearchUrl } from '@/lib/booking'
+
+// Heuristic for "likely still in theatres": movie released within the last 60 days.
+// No ticketing provider exposes a public API, so this gates a BookMyShow deep link.
+function isInTheatreWindow(mediaType: string, releaseDate: string | undefined | null): boolean {
+  if (mediaType !== 'movie' || !releaseDate) return false
+  const days = (Date.now() - new Date(releaseDate).getTime()) / 86_400_000
+  return days >= 0 && days <= 60
+}
 
 const PLACEHOLDER_BACKDROP = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%230d1421'/%3E%3Crect x='6.1' y='3.3' width='3.8' height='2.4' rx='0.2' fill='none' stroke='%231d2c3e' stroke-width='0.12'/%3E%3Ccircle cx='7.1' cy='3.9' r='0.4' fill='%231d2c3e'/%3E%3Cpolygon points='6.1,5.7 7.6,4.3 8.6,4.9 9.9,4 9.9,5.7' fill='%231d2c3e'/%3E%3C/svg%3E"
 const PLACEHOLDER_POSTER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 450'%3E%3Crect width='300' height='450' fill='%230d1421'/%3E%3Crect x='115' y='190' width='70' height='70' rx='4' fill='none' stroke='%231d2c3e' stroke-width='2'/%3E%3Ccircle cx='135' cy='210' r='8' fill='%231d2c3e'/%3E%3Cpolygon points='115,260 142,234 163,248 185,228 185,260' fill='%231d2c3e'/%3E%3C/svg%3E"
@@ -212,6 +221,12 @@ export function MovieDetailPage() {
                   ))}
                 </div>
               </div>
+            ) : isInTheatreWindow(movie.mediaType, movie.releaseDate) ? (
+              <div className="mb-6 px-4 py-3 rounded-lg bg-cinema-navy border border-cinema-navy-border">
+                <p className="text-cinema-muted font-body text-sm">
+                  🎬 In theatres now — OTT release usually follows a few weeks after the theatrical run. Add to watchlist and we'll notify you when it hits streaming.
+                </p>
+              </div>
             ) : (
               <div className="mb-6 px-4 py-3 rounded-lg bg-cinema-navy border border-cinema-navy-border">
                 <p className="text-cinema-muted font-body text-sm">
@@ -246,6 +261,17 @@ export function MovieDetailPage() {
                   <><BookmarkPlus size={16} /> {adding ? 'Adding…' : 'Add to Watchlist'}</>
                 )}
               </button>
+
+              {isInTheatreWindow(movie.mediaType, movie.releaseDate) && (
+                <a
+                  href={bookMyShowSearchUrl(movie.title)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-red-500/90 hover:bg-red-500 text-white font-body font-semibold text-sm transition-colors"
+                >
+                  <Ticket size={16} /> Book Tickets
+                </a>
+              )}
 
               {movie.platforms[0]?.deepLink && (
                 <a

@@ -42,6 +42,12 @@ public class MovieController {
         return ResponseEntity.ok(ApiResponse.success(movieSearchService.getTrending(region, language)));
     }
 
+    @GetMapping("/now-playing")
+    public ResponseEntity<ApiResponse<List<MovieSearchResult>>> nowPlaying(
+            @RequestParam(required = false) String language) {
+        return ResponseEntity.ok(ApiResponse.success(movieSearchService.getNowPlaying(language)));
+    }
+
     @GetMapping("/person/{personId}")
     public ResponseEntity<ApiResponse<PersonFilmography>> getPersonFilmography(
             @PathVariable Integer personId) {

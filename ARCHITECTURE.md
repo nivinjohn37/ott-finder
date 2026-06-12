@@ -136,6 +136,7 @@ proj-movie/
         │   ├── MovieDetailPage.tsx  ← Cast drawer, share, trailer, watchlist
         │   ├── WatchlistPage.tsx
         │   ├── TrendingPage.tsx
+        │   ├── InTheatresPage.tsx   ← Now playing in Indian theatres, language tabs, BMS booking link
         │   ├── ProfilePage.tsx
         │   └── NotFoundPage.tsx
         ├── hooks/
@@ -419,6 +420,11 @@ GET  /api/movies/trending
      → 200 ApiResponse<List<MovieSearchResult>>
      ← No auth required
 
+GET  /api/movies/now-playing?language={all|ml|ta|te|kn|hi|en}
+     → 200 ApiResponse<List<MovieSearchResult>>
+     ← No auth required
+     TMDB discover: theatrical releases (type 3|2) in IN, last 45 days, by original language
+
 GET  /api/movies/person/{personId}
      → 200 ApiResponse<PersonFilmography>
      ← No auth required; login-gated on frontend
@@ -522,6 +528,7 @@ POST /api/admin/availability           ← Auth required, admin role
 | `tmdb:movie:{tmdbId}` | 24h | TTL only |
 | `tmdb:trending` | 24h | TTL only |
 | `tmdb:person:{personId}` | 24h | TTL only |
+| `tmdb:now_playing:{lang}` | 12h | TTL only |
 | `ott:availability:{tmdbId}` | 6h | TTL only |
 | `watchlist:user:{userId}` | 1h | add/remove/watched toggle |
 | `ai:review-summary:{tmdbId}:free` | 48h | TTL only |
@@ -579,6 +586,11 @@ TrendingPage (/trending)
 ├── Navbar
 └── MovieGrid (all trending) → MovieCard[]
 
+InTheatresPage (/in-theatres)
+├── Navbar
+├── Language chips (All / Malayalam / Tamil / Telugu / Kannada / Hindi / English)
+└── TheatreCard[] (poster → detail, "Book Tickets" → BookMyShow search deep link)
+
 MovieDetailPage (/movie/:tmdbId?type=movie|tv)
 ├── Navbar
 ├── Backdrop + gradient overlay
@@ -606,6 +618,7 @@ ProfilePage (/profile)               ← Auth required
 ```typescript
 // useMovies.ts — all movie-related React Query hooks
 useTrending(): { data: MovieSearchResult[], isLoading, isError }
+useNowPlaying(language?: string): { data: MovieSearchResult[], isLoading, isError }
 useMovieSearch(query: string): { data: MovieSearchResult[], isLoading, isError }
 useMovieDetail(tmdbId: number, type?: string): { data: MovieDetail, isLoading, isError }
 usePersonFilmography(personId: number | null): { data: PersonFilmography, isLoading }

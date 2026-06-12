@@ -48,11 +48,15 @@ public class TMDBService {
     @Value("${tmdb.image-base-url}")
     private String imageBaseUrl;
 
-    private static final Duration SEARCH_TTL    = Duration.ofHours(24);
-    private static final Duration DETAIL_TTL    = Duration.ofHours(24);
-    private static final Duration TRENDING_TTL  = Duration.ofHours(6);
-    private static final Duration GENRE_TTL     = Duration.ofHours(6);
-    private static final Duration DISCOVER_TTL  = Duration.ofHours(6);
+    private static final Duration SEARCH_TTL      = Duration.ofHours(24);
+    private static final Duration DETAIL_TTL      = Duration.ofHours(24);
+    private static final Duration TRENDING_TTL    = Duration.ofHours(6);
+    private static final Duration GENRE_TTL       = Duration.ofHours(6);
+    private static final Duration DISCOVER_TTL    = Duration.ofHours(6);
+    private static final Duration NOW_PLAYING_TTL = Duration.ofHours(12);
+
+    // Languages allowed on the now-playing filter; anything else falls back to "all"
+    private static final Set<String> NOW_PLAYING_LANGUAGES = Set.of("hi", "ta", "te", "ml", "kn", "en");
 
     private static final Map<String, Integer> GENRE_IDS = Map.ofEntries(
         Map.entry("Action", 28),
@@ -143,6 +147,36 @@ public class TMDBService {
         }
 
         if (!results.isEmpty()) cache(cacheKey, results, TRENDING_TTL);
+        return results;
+    }
+
+    public List<MovieSearchResult> getNowPlaying(String language) {
+        String safeLang = (language != null && NOW_PLAYING_LANGUAGES.contains(language.toLowerCase()))
+                ? language.toLowerCase() : "all";
+
+        String cacheKey = "tmdb:now_playing:" + safeLang;
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return deserializeList(cached, new TypeReference<>() {});
+        }
+
+        // Theatrical (3) + limited theatrical (2) releases in India within the last 45 days.
+        // TMDB's /movie/now_playing skews to wide Hindi/English releases; discover with
+        // with_original_language is what surfaces Malayalam/Tamil/Telugu/Kannada films.
+        java.time.LocalDate today = java.time.LocalDate.now();
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl + "/discover/movie")
+                .queryParam("api_key", apiKey)
+                .queryParam("language", "en-US")
+                .queryParam("region", "IN")
+                .queryParam("with_release_type", "3|2")
+                .queryParam("release_date.gte", today.minusDays(45).toString())
+                .queryParam("release_date.lte", today.toString())
+                .queryParam("sort_by", "popularity.desc")
+                .queryParam("page", 1);
+        if (!"all".equals(safeLang)) builder.queryParam("with_original_language", safeLang);
+
+        List<MovieSearchResult> results = fetchDiscoverResults(builder.toUriString(), "movie");
+        if (!results.isEmpty()) cache(cacheKey, results, NOW_PLAYING_TTL);
         return results;
     }
 

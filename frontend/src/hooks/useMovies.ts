@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { searchMovies, getTrending, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions, getNlSearch, snapSearch } from '@/api/movies'
+import { searchMovies, getTrending, getNowPlaying, getMovieDetail, getPersonFilmography, getGenreMovies, getShelves, getReviewSummary, getMoodSuggestions, getNlSearch, snapSearch } from '@/api/movies'
 import { useAuth } from '@/context/AuthContext'
 import type { MoodAnswers } from '@/types'
 
@@ -17,6 +17,14 @@ export function useTrending(region?: string, language?: string) {
     queryKey: ['movies', 'trending', region ?? 'global', language ?? 'all'],
     queryFn: () => getTrending(region, language),
     staleTime: 10 * 60 * 1000,
+  })
+}
+
+export function useNowPlaying(language?: string) {
+  return useQuery({
+    queryKey: ['movies', 'now-playing', language ?? 'all'],
+    queryFn: () => getNowPlaying(language),
+    staleTime: 30 * 60 * 1000,
   })
 }
 

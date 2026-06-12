@@ -77,6 +77,7 @@ export function Navbar() {
             <div className="hidden md:flex items-center gap-6">
               <NavLink to="/" label="Home" />
               <NavLink to="/trending" label="Trending" />
+              <NavLink to="/in-theatres" label="🎟️ In Theatres" />
               <NavLink to="/discover" label="Discover" />
               <NavLink to="/roulette" label="🎰 Roulette" />
               <NavLink to="/reels" label="🎬 Reels" />
@@ -250,6 +251,7 @@ export function Navbar() {
             <div className="flex flex-col gap-3">
               <MobileLink to="/" label="Home" />
               <MobileLink to="/trending" label="Trending" />
+              <MobileLink to="/in-theatres" label="🎟️ In Theatres" />
               <MobileLink to="/discover" label="Discover" />
               <MobileLink to="/roulette" label="🎰 Roulette" />
               <MobileLink to="/reels" label="🎬 Reels" />

@@ -84,6 +84,54 @@ class TMDBServiceTest {
     }
 
     @Test
+    void nowPlaying_cacheMiss_callsDiscoverWithLanguageAndCaches() throws Exception {
+        when(valueOps.get(anyString())).thenReturn(null);
+        byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("results", List.of(
+                Map.of("id", 1084736, "title", "Manjummel Boys",
+                        "overview", "Survival thriller", "release_date", "2024-02-22",
+                        "vote_average", 7.8, "vote_count", 350,
+                        "poster_path", "/manjummel.jpg")
+        )));
+        when(restTemplate.getForObject(anyString(), eq(byte[].class))).thenReturn(body);
+
+        List<MovieSearchResult> results = tmdbService.getNowPlaying("ml");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).title()).isEqualTo("Manjummel Boys");
+        assertThat(results.get(0).mediaType()).isEqualTo("movie");
+        verify(restTemplate).getForObject(
+                argThat((String url) -> url.contains("with_original_language=ml")
+                        && url.contains("region=IN")
+                        && url.contains("with_release_type")),
+                eq(byte[].class));
+        verify(valueOps).set(eq("tmdb:now_playing:ml"), anyString(), any());
+    }
+
+    @Test
+    void nowPlaying_unknownLanguage_fallsBackToAll() throws Exception {
+        when(valueOps.get(anyString())).thenReturn(null);
+        byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("results", List.of()));
+        when(restTemplate.getForObject(anyString(), eq(byte[].class))).thenReturn(body);
+
+        tmdbService.getNowPlaying("xx");
+
+        verify(restTemplate).getForObject(
+                argThat((String url) -> !url.contains("with_original_language")),
+                eq(byte[].class));
+    }
+
+    @Test
+    void nowPlaying_apiFailure_returnsEmptyList() {
+        when(valueOps.get(anyString())).thenReturn(null);
+        when(restTemplate.getForObject(anyString(), eq(byte[].class)))
+                .thenThrow(new RestClientException("connection refused"));
+
+        List<MovieSearchResult> results = tmdbService.getNowPlaying("ta");
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
     void search_filtersOutPersonResults() throws Exception {
         when(valueOps.get(anyString())).thenReturn(null);
         byte[] body = new ObjectMapper().writeValueAsBytes(Map.of("results", List.of(

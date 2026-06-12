@@ -9,6 +9,7 @@ import { Layout } from '@/components/layout/Layout'
 import { HomePage } from '@/pages/HomePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { TrendingPage } from '@/pages/TrendingPage'
+import { InTheatresPage } from '@/pages/InTheatresPage'
 import { MovieDetailPage } from '@/pages/MovieDetailPage'
 import { WatchlistPage } from '@/pages/WatchlistPage'
 import { ProfilePage } from '@/pages/ProfilePage'
@@ -33,6 +34,7 @@ export function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/trending" element={<TrendingPage />} />
+              <Route path="/in-theatres" element={<InTheatresPage />} />
               <Route path="/movie/:tmdbId" element={<MovieDetailPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/profile" element={<ProfilePage />} />
